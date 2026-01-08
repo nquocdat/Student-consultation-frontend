@@ -1,0 +1,41 @@
+.student-layout {
+  display: flex;
+  height: 100vh;
+}
+
+.student-sidebar {
+  width: 260px;
+  background: #1b8c2f;
+  color: white;
+  padding: 20px;
+}
+
+.student-sidebar .title {
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.student-sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.student-sidebar li {
+  margin-bottom: 12px;
+}
+
+.student-sidebar a {
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.student-sidebar a:hover {
+  text-decoration: underline;
+}
+
+.student-content {
+  flex: 1;
+  padding: 20px;
+  background: #f5f5f5;
+}
