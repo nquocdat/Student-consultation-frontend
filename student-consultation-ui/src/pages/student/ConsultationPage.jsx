@@ -2,41 +2,77 @@ import { useEffect, useState } from "react";
 
 const ConsultationPage = () => {
   const [form, setForm] = useState({
-    lecturerId: "", // có thể rỗng
+    lecturerId: "",
     date: "",
     time: "",
     reason: "",
   });
 
   const [lecturers, setLecturers] = useState([]);
+  const [freeSlots, setFreeSlots] = useState([]);
 
-  // ===== LẤY DANH SÁCH GIẢNG VIÊN =====
+  const token = localStorage.getItem("token");
+
+  /* ================= LOAD GIẢNG VIÊN ================= */
   useEffect(() => {
     fetch("http://localhost:8080/api/lecturers")
       .then(res => res.json())
-      .then(data => setLecturers(data))
-      .catch(err => console.error("Lỗi load giảng viên:", err));
+      .then(setLecturers)
+      .catch(console.error);
   }, []);
 
+  /* ================= LOAD SLOT RẢNH ================= */
+  useEffect(() => {
+    if (!form.lecturerId || !form.date || !token) {
+      setFreeSlots([]);
+      setForm(prev => ({ ...prev, time: "" }));
+      return;
+    }
+
+    fetch(
+      `http://localhost:8080/api/schedule/free/${form.lecturerId}?date=${form.date}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setFreeSlots(data))
+      .catch(() => setFreeSlots([]));
+  }, [form.lecturerId, form.date, token]);
+
+  /* ================= HANDLE CHANGE ================= */
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
   };
 
+  /* ================= SUBMIT ================= */
   const handleSubmit = () => {
-    // ❗ KHÔNG bắt buộc lecturerId
-    if (!form.date || !form.time) {
-      alert("Vui lòng chọn ngày và giờ tư vấn!");
+    if (!form.date) {
+      alert("Vui lòng chọn ngày tư vấn");
       return;
     }
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Bạn chưa đăng nhập!");
+    if (!form.time) {
+      alert("Vui lòng chọn giờ tư vấn");
       return;
     }
+
+    if (!token) {
+      alert("Bạn chưa đăng nhập");
+      return;
+    }
+
+    const payload = {
+      lecturerId: form.lecturerId ? Number(form.lecturerId) : null,
+      date: form.date,
+      time: form.time, // ✅ CHỈ GỬI time
+      reason: form.reason,
+    };
+
+    console.log("📤 CREATE APPOINTMENT PAYLOAD:", payload);
 
     fetch("http://localhost:8080/api/appointment/create", {
       method: "POST",
@@ -44,45 +80,39 @@ const ConsultationPage = () => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        lecturerId: form.lecturerId || null, // 👈 nếu không chọn → null
-        date: form.date,
-        time: form.time,
-        reason: form.reason,
-      }),
+      body: JSON.stringify(payload),
     })
-      .then((res) => {
+      .then(res => {
         if (!res.ok) throw new Error("Tạo lịch hẹn thất bại");
         return res.json();
       })
       .then(() => {
-        alert("Đăng ký lịch tư vấn thành công!");
-        setForm({
-          lecturerId: "",
-          date: "",
-          time: "",
-          reason: "",
-        });
+        alert("Đăng ký tư vấn thành công!");
+        setForm({ lecturerId: "", date: "", time: "", reason: "" });
+        setFreeSlots([]);
       })
-      .catch((err) => {
-        console.error(err);
-        alert(err.message);
-      });
+      .catch(err => alert(err.message));
   };
 
   return (
     <div>
       <h4 className="mb-3">📘 Đăng ký tư vấn học đường</h4>
 
-      <div
-        style={{
-          background: "#cfe6ff",
-          padding: 20,
-          borderRadius: 6,
-          marginBottom: 20,
-        }}
-      >
-        {/* ===== CHỌN GIẢNG VIÊN (KHÔNG BẮT BUỘC) ===== */}
+      <div style={{ background: "#cfe6ff", padding: 20, borderRadius: 6 }}>
+
+        {/* ===== NGÀY ===== */}
+        <div className="mb-3">
+          <label>Ngày tư vấn</label>
+          <input
+            type="date"
+            className="form-control"
+            name="date"
+            value={form.date}
+            onChange={handleChange}
+          />
+        </div>
+
+        {/* ===== GIẢNG VIÊN ===== */}
         <div className="mb-3">
           <label>Giảng viên tư vấn</label>
           <select
@@ -90,55 +120,62 @@ const ConsultationPage = () => {
             name="lecturerId"
             value={form.lecturerId}
             onChange={handleChange}
+            disabled={!form.date}
           >
-            <option value="">
-              -- Không chọn (hệ thống tự phân công) --
-            </option>
-            {lecturers.map((l) => (
+            <option value="">-- Không chọn (tự phân công) --</option>
+            {lecturers.map(l => (
               <option key={l.id} value={l.id}>
                 {l.fullName}
               </option>
             ))}
           </select>
-          <small className="text-muted">
-            Nếu không chọn, hệ thống sẽ tìm giảng viên rảnh phù hợp
-          </small>
         </div>
 
-        <div className="row mb-3">
-          <div className="col-md-6">
-            <label>Ngày tư vấn</label>
-            <input
-              type="date"
-              className="form-control"
-              name="date"
-              value={form.date}
-              onChange={handleChange}
-            />
-          </div>
+        {/* ===== GIỜ ===== */}
+        <div className="mb-3">
+          <label>Giờ tư vấn (30 phút)</label>
 
-          <div className="col-md-6">
-            <label>Giờ tư vấn</label>
+          {form.lecturerId ? (
+            <select
+              className="form-control"
+              name="time"
+              value={form.time}
+              onChange={handleChange}
+            >
+              <option value="">-- Chọn giờ rảnh --</option>
+              {freeSlots.map((slot, index) => (
+                <option key={index} value={slot.startTime}>
+                  {slot.startTime} - {slot.endTime}
+                </option>
+              ))}
+            </select>
+          ) : (
             <input
               type="time"
               className="form-control"
               name="time"
               value={form.time}
               onChange={handleChange}
-              step="1800" // ⏱️ gợi ý 30 phút
+              step="1800"
             />
-          </div>
+          )}
+
+          {form.lecturerId && !freeSlots.length && (
+            <small className="text-danger">
+              Giảng viên không có giờ rảnh ngày này
+            </small>
+          )}
         </div>
 
+        {/* ===== LÝ DO ===== */}
         <div className="mb-3">
-          <label>Lý do / nội dung tư vấn</label>
+          <label>Lý do / nội dung</label>
           <textarea
             className="form-control"
             rows={3}
             name="reason"
             value={form.reason}
             onChange={handleChange}
-            placeholder="Nhập nội dung cần tư vấn (không bắt buộc)"
           />
         </div>
 
@@ -148,24 +185,6 @@ const ConsultationPage = () => {
           </button>
         </div>
       </div>
-
-      {/* ===== TABLE PLACEHOLDER ===== */}
-      <table className="table table-bordered table-sm text-center">
-        <thead className="table-light">
-          <tr>
-            <th>Giảng viên</th>
-            <th>Ngày</th>
-            <th>Giờ</th>
-            <th>Lý do</th>
-            <th>Trạng thái</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td colSpan="5">Chưa có dữ liệu</td>
-          </tr>
-        </tbody>
-      </table>
     </div>
   );
 };
