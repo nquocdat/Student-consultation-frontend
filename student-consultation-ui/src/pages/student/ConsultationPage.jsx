@@ -10,6 +10,8 @@ const ConsultationPage = () => {
 
   const [lecturers, setLecturers] = useState([]);
   const [freeSlots, setFreeSlots] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+
 
   const token = localStorage.getItem("token");
 
@@ -20,6 +22,20 @@ const ConsultationPage = () => {
       .then(setLecturers)
       .catch(console.error);
   }, []);
+  // danh sách cuộc hẹn tư vấn của sinh viên
+  useEffect(() => {
+    if (!token) return;
+
+    fetch("http://localhost:8080/api/appointment/my", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => res.json())
+      .then(setAppointments)
+      .catch(console.error);
+  }, [token]);
+
 
   /* ================= LOAD SLOT RẢNH ================= */
   useEffect(() => {
@@ -90,9 +106,44 @@ const ConsultationPage = () => {
         alert("Đăng ký tư vấn thành công!");
         setForm({ lecturerId: "", date: "", time: "", reason: "" });
         setFreeSlots([]);
+        // 🔄 reload danh sách cuộc hẹn
+        return fetch("http://localhost:8080/api/appointment/my", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
       })
       .catch(err => alert(err.message));
   };
+  // hủy lịch hẹn của sinh viên 
+  const cancelAppointment = (id) => {
+    if (!window.confirm("Bạn có chắc muốn hủy cuộc hẹn này không?")) return;
+
+    fetch(`http://localhost:8080/api/appointment/${id}/cancel/student`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => {
+        if (!res.ok) throw new Error("Hủy lịch thất bại");
+        return res.json();
+      })
+      .then(() => {
+        alert("Đã hủy lịch thành công");
+
+        // 🔄 reload danh sách
+        setAppointments(prev =>
+          prev.map(a =>
+            a.id === id
+              ? { ...a, statusCode: "CANCELLED", statusDescription: "Đã hủy" }
+              : a
+          )
+        );
+      })
+      .catch(err => alert(err.message));
+  };
+
 
   return (
     <div>
@@ -185,8 +236,71 @@ const ConsultationPage = () => {
           </button>
         </div>
       </div>
+      <hr className="my-4" />
+
+      <h5>📋 Lịch tư vấn đã đăng ký</h5>
+
+      <table className="table table-bordered mt-3">
+        <thead className="table-light">
+          <tr>
+            <th>#</th>
+            <th>Giảng viên</th>
+            <th>Ngày</th>
+            <th>Giờ</th>
+            <th>Lý do</th>
+            <th>Trạng thái</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          {appointments.length === 0 && (
+            <tr>
+              <td colSpan={7} className="text-center text-muted">
+                Chưa có cuộc hẹn nào
+              </td>
+            </tr>
+          )}
+
+          {appointments.map((a, index) => (
+            <tr key={a.id}>
+              <td>{index + 1}</td>
+              <td>{a.lecturerName || "Chưa phân công"}</td>
+              <td>{a.date}</td>
+              <td>{a.time}</td>
+              <td>{a.reason}</td>
+              <td>
+                <span
+                  className={
+                    a.statusCode === "PENDING"
+                      ? "badge bg-warning"
+                      : a.statusCode === "APPROVED"
+                        ? "badge bg-success"
+                        : "badge bg-secondary"
+                  }
+                >
+                  {a.statusDescription}
+                </span>
+              </td>
+              <td>
+                {a.statusCode === "PENDING" && (
+                  <button
+                    className="btn btn-sm btn-danger"
+                    onClick={() => cancelAppointment(a.id)}
+                  >
+                    ❌ Hủy
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
     </div>
+
   );
+
 };
+
 
 export default ConsultationPage;
