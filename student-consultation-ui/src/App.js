@@ -4,11 +4,9 @@ import MyAppointments from "./pages/student/MyAppointments";
 import LecturerAppointments from "./pages/lecturer/LecturerAppointments";
 import StudentLayout from "./components/StudentLayout";
 import ConsultationPage from "./pages/student/ConsultationPage"; // Import ConsultationPage
-import LecturerLayout from "./components/LecturerLayout";
+import LecturerLayout from "./components/lecturer/LecturerLayout";
 import LecturerDashboard from "./pages/lecturer/LecturerDashboard";
 import LecturerProfile from "./pages/lecturer/LecturerProfile";
-
-
 
 
 function App() {
