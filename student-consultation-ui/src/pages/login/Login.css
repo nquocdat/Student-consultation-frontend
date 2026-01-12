@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+:root {
+  --hunre-primary: #005a8d;
+  --hunre-secondary: #008f5d;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', sans-serif;
+}
+
+.login-container {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+  /* Ảnh nền full màn hình */
+  background-image: url('https://cdn.giaoduc.net.vn/images/4de4c68b74530ee1841e18783776432544042db54596839d78cf9d437448398cade8ac751afbd257464167d484beddd589c286ead274f9bb15bcb3f2d73702e64856ccbb08114e8e3e0f595243825f67f178361b3740444281e9233234065321/z5645353098126-ed85eaa5ab296b5fe3c14e06a17af6f5.jpg.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.login-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.96); 
+  
+  /* 👇 ĐÃ TĂNG ĐỘ RỘNG ĐỂ CHỮ KHÔNG BỊ XẤU */
+  width: 500px;
+  max-width: 95%; /* Để responsive trên điện thoại */
+  padding: 40px 45px;
+  
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); 
+  text-align: center;
+}
+
+.brand-section { margin-bottom: 30px; }
+
+.logo {
+  width: 110px;
+  height: auto;
+  margin-bottom: 15px;
+}
+
+.school-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #444;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  line-height: 1.5; /* Giãn dòng để tên trường dài trông thoáng hơn */
+}
+
+.portal-name {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--hunre-primary);
+}
+
+/* --- FORM INPUT (ĐÃ SỬA LỖI ĐÈ CHỮ) --- */
+
+.input-group {
+  margin-bottom: 25px;
+  text-align: left;
+}
+
+.input-group label {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+/* 1. KHUNG BAO NGOÀI */
+.input-wrapper {
+  position: relative; /* Quan trọng: Để icon bám theo khung này */
+  width: 100%;
+}
+
+/* 2. ICON (Căn chỉnh lại) */
+.input-icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  font-size: 16px;     /* 👈 GIẢM size emoji */
+  line-height: 1;      /* 👈 FIX emoji cao bất thường */
+
+  color: #666;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.form-control {
+  width: 90%;              /* 👈 giảm độ rộng */
+  height: 48px;
+
+  padding-left: 45px;      /* né icon như hiện tại */
+  padding-right: 15px;
+
+  font-size: 16px;
+  border-radius: 8px;
+}
+
+
+.form-control:focus {
+  border-color: var(--hunre-primary);
+  box-shadow: 0 0 0 4px rgba(0, 90, 141, 0.15);
+}
+
+/* Fix màu nền vàng autofill */
+.form-control:-webkit-autofill,
+.form-control:-webkit-autofill:hover, 
+.form-control:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px white inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.btn-login {
+  width: 100%;
+  height: 50px;
+  margin-top: 20px;
+  background: linear-gradient(90deg, var(--hunre-primary), var(--hunre-secondary));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-login:hover {
+  transform: translateY(-2px);
+  opacity: 0.95;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #d32f2f;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #ffcdd2;
+  font-size: 14px;
+}
+
+.footer-text {
+  margin-top: 30px;
+  font-size: 13px;
+  color: #888;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+}
