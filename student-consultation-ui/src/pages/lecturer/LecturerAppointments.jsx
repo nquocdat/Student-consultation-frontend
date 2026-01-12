@@ -1,9 +1,54 @@
 import { useEffect, useState } from "react";
 import appointmentApi from "../../api/appointmentApi";
+import axios from "axios";
 
 export default function LecturerAppointments() {
+
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
+
+
+    const downloadAttachment = async (file) => {
+    try {
+        const rawToken = localStorage.getItem("accessToken");
+        const token = rawToken?.startsWith('"')
+            ? JSON.parse(rawToken)
+            : rawToken;
+
+        const res = await axios.get(
+            `http://localhost:8080/api/appointment/${file.id}/download`,
+            {
+                responseType: "blob",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+
+        const blob = new Blob([res.data], {
+            type: file.fileType || "application/octet-stream"
+        });
+
+        const url = window.URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.fileName;
+        document.body.appendChild(a);
+        a.click();
+
+        a.remove();
+        window.URL.revokeObjectURL(url);
+
+    } catch (err) {
+        console.error("DOWNLOAD ERROR:", err.response || err);
+        alert("❌ Không tải được file");
+    }
+};
+
+
+
+
 
     const loadAppointments = async () => {
         try {
@@ -115,14 +160,11 @@ export default function LecturerAppointments() {
                     <tr>
                         <th>Ngày</th>
                         <th>Giờ</th>
-
                         <th>Tên sinh viên</th>
                         <th>Email</th>
                         <th>SĐT</th>
-
                         <th>Hình thức</th>
                         <th>File đính kèm</th>
-
                         <th>Trạng thái</th>
                         <th>Hành động</th>
                     </tr>
@@ -150,9 +192,24 @@ export default function LecturerAppointments() {
                                 {renderConsultationType(appt.consultationType)}
                             </td>
 
-                            <td className="text-center">
-                                {renderAttachment(appt.attachmentUrl)}
+                            <td className="text-start">
+                                {Array.isArray(appt.attachments) && appt.attachments.length > 0 ? (
+                                    appt.attachments.map(file => (
+                                        <div key={file.id}>
+                                            <button
+                                                className="btn btn-link p-0 text-decoration-none"
+                                                onClick={() => downloadAttachment(file)}
+                                            >
+                                                📎 {file.fileName}
+                                            </button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <span className="text-muted">Không có</span>
+                                )}
                             </td>
+
+
 
                             <td className="text-center">
                                 {renderStatus(appt.statusCode, appt.statusDescription)}
