@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 const ConsultationPage = () => {
+  const token = localStorage.getItem("token");
+
   const [form, setForm] = useState({
     lecturerId: "",
     date: "",
@@ -11,52 +13,54 @@ const ConsultationPage = () => {
   const [lecturers, setLecturers] = useState([]);
   const [freeSlots, setFreeSlots] = useState([]);
   const [appointments, setAppointments] = useState([]);
+  const [consultationType, setConsultationType] = useState("IN_PERSON");
 
-
-  const token = localStorage.getItem("token");
-
-  /* ================= LOAD GIẢNG VIÊN ================= */
-  useEffect(() => {
-    fetch("http://localhost:8080/api/lecturers")
-      .then(res => res.json())
-      .then(setLecturers)
-      .catch(console.error);
-  }, []);
-  // danh sách cuộc hẹn tư vấn của sinh viên
-  useEffect(() => {
+  /* ================= LOAD APPOINTMENTS ================= */
+  const loadAppointments = useCallback(() => {
     if (!token) return;
 
     fetch("http://localhost:8080/api/appointment/my", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())
       .then(setAppointments)
       .catch(console.error);
   }, [token]);
 
-
-  /* ================= LOAD SLOT RẢNH ================= */
-  useEffect(() => {
+  /* ================= LOAD FREE SLOTS ================= */
+  const loadFreeSlots = useCallback(() => {
     if (!form.lecturerId || !form.date || !token) {
       setFreeSlots([]);
-      setForm(prev => ({ ...prev, time: "" }));
       return;
     }
 
     fetch(
       `http://localhost:8080/api/schedule/free/${form.lecturerId}?date=${form.date}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      { headers: { Authorization: `Bearer ${token}` } }
     )
-      .then(res => res.ok ? res.json() : [])
-      .then(data => setFreeSlots(data))
+      .then(res => (res.ok ? res.json() : []))
+      .then(setFreeSlots)
       .catch(() => setFreeSlots([]));
   }, [form.lecturerId, form.date, token]);
+
+  /* ================= LOAD LECTURERS ================= */
+  useEffect(() => {
+    fetch("http://localhost:8080/api/lecturers")
+      .then(res => res.json())
+      .then(setLecturers)
+      .catch(console.error);
+  }, []);
+
+  /* ================= INIT LOAD ================= */
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
+
+  /* ================= RELOAD SLOT WHEN DATE / LECTURER CHANGE ================= */
+  useEffect(() => {
+    setForm(prev => ({ ...prev, time: "" }));
+    loadFreeSlots();
+  }, [form.lecturerId, form.date, loadFreeSlots]);
 
   /* ================= HANDLE CHANGE ================= */
   const handleChange = (e) => {
@@ -64,31 +68,20 @@ const ConsultationPage = () => {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  /* ================= SUBMIT ================= */
+  /* ================= CREATE APPOINTMENT ================= */
   const handleSubmit = () => {
-    if (!form.date) {
-      alert("Vui lòng chọn ngày tư vấn");
-      return;
-    }
-
-    if (!form.time) {
-      alert("Vui lòng chọn giờ tư vấn");
-      return;
-    }
-
-    if (!token) {
-      alert("Bạn chưa đăng nhập");
+    if (!form.date || !form.time) {
+      alert("Vui lòng chọn ngày và giờ tư vấn");
       return;
     }
 
     const payload = {
       lecturerId: form.lecturerId ? Number(form.lecturerId) : null,
       date: form.date,
-      time: form.time, // ✅ CHỈ GỬI time
+      time: form.time,
       reason: form.reason,
+      consultationType,
     };
-
-    console.log("📤 CREATE APPOINTMENT PAYLOAD:", payload);
 
     fetch("http://localhost:8080/api/appointment/create", {
       method: "POST",
@@ -100,58 +93,40 @@ const ConsultationPage = () => {
     })
       .then(res => {
         if (!res.ok) throw new Error("Tạo lịch hẹn thất bại");
-        return res.json();
       })
       .then(() => {
         alert("Đăng ký tư vấn thành công!");
         setForm({ lecturerId: "", date: "", time: "", reason: "" });
         setFreeSlots([]);
-        // 🔄 reload danh sách cuộc hẹn
-        return fetch("http://localhost:8080/api/appointment/my", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        loadAppointments();
       })
       .catch(err => alert(err.message));
   };
-  // hủy lịch hẹn của sinh viên 
+
+  /* ================= CANCEL APPOINTMENT ================= */
   const cancelAppointment = (id) => {
     if (!window.confirm("Bạn có chắc muốn hủy cuộc hẹn này không?")) return;
 
     fetch(`http://localhost:8080/api/appointment/${id}/cancel/student`, {
       method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => {
         if (!res.ok) throw new Error("Hủy lịch thất bại");
-        return res.json();
       })
       .then(() => {
         alert("Đã hủy lịch thành công");
-
-        // 🔄 reload danh sách
-        setAppointments(prev =>
-          prev.map(a =>
-            a.id === id
-              ? { ...a, statusCode: "CANCELLED", statusDescription: "Đã hủy" }
-              : a
-          )
-        );
+        loadAppointments();
+        loadFreeSlots(); // 🔥 CỰC KỲ QUAN TRỌNG
       })
       .catch(err => alert(err.message));
   };
-
 
   return (
     <div>
       <h4 className="mb-3">📘 Đăng ký tư vấn học đường</h4>
 
       <div style={{ background: "#cfe6ff", padding: 20, borderRadius: 6 }}>
-
-        {/* ===== NGÀY ===== */}
         <div className="mb-3">
           <label>Ngày tư vấn</label>
           <input
@@ -163,9 +138,8 @@ const ConsultationPage = () => {
           />
         </div>
 
-        {/* ===== GIẢNG VIÊN ===== */}
         <div className="mb-3">
-          <label>Giảng viên tư vấn</label>
+          <label>Giảng viên</label>
           <select
             className="form-control"
             name="lecturerId"
@@ -173,7 +147,7 @@ const ConsultationPage = () => {
             onChange={handleChange}
             disabled={!form.date}
           >
-            <option value="">-- Không chọn (tự phân công) --</option>
+            <option value="">-- Tự phân công --</option>
             {lecturers.map(l => (
               <option key={l.id} value={l.id}>
                 {l.fullName}
@@ -182,45 +156,46 @@ const ConsultationPage = () => {
           </select>
         </div>
 
-        {/* ===== GIỜ ===== */}
         <div className="mb-3">
-          <label>Giờ tư vấn (30 phút)</label>
+          <label>Giờ tư vấn</label>
 
           {form.lecturerId ? (
-            <select
-              className="form-control"
-              name="time"
-              value={form.time}
-              onChange={handleChange}
-            >
-              <option value="">-- Chọn giờ rảnh --</option>
-              {freeSlots.map((slot, index) => (
-                <option key={index} value={slot.startTime}>
-                  {slot.startTime} - {slot.endTime}
-                </option>
-              ))}
-            </select>
+            <>
+              <select
+                className="form-control"
+                name="time"
+                value={form.time}
+                onChange={handleChange}
+                disabled={!freeSlots.length}
+              >
+                <option value="">-- Chọn giờ --</option>
+                {freeSlots.map((s, i) => (
+                  <option key={i} value={s.startTime}>
+                    {s.startTime} - {s.endTime}
+                  </option>
+                ))}
+              </select>
+
+              {!freeSlots.length && (
+                <small className="text-danger">
+                  Giảng viên không còn giờ rảnh ngày này
+                </small>
+              )}
+            </>
           ) : (
             <input
               type="time"
               className="form-control"
               name="time"
+              step="1800"
               value={form.time}
               onChange={handleChange}
-              step="1800"
             />
-          )}
-
-          {form.lecturerId && !freeSlots.length && (
-            <small className="text-danger">
-              Giảng viên không có giờ rảnh ngày này
-            </small>
           )}
         </div>
 
-        {/* ===== LÝ DO ===== */}
         <div className="mb-3">
-          <label>Lý do / nội dung</label>
+          <label>Lý do</label>
           <textarea
             className="form-control"
             rows={3}
@@ -230,57 +205,67 @@ const ConsultationPage = () => {
           />
         </div>
 
-        <div className="text-end">
-          <button className="btn btn-success" onClick={handleSubmit}>
-            ➕ Đăng ký tư vấn
-          </button>
+        <div className="mb-3">
+          <label>Hình thức tư vấn</label><br />
+          <label>
+            <input
+              type="radio"
+              value="IN_PERSON"
+              checked={consultationType === "IN_PERSON"}
+              onChange={e => setConsultationType(e.target.value)}
+            /> Trực tiếp
+          </label>
+
+          <label className="ms-3">
+            <input
+              type="radio"
+              value="PHONE"
+              checked={consultationType === "PHONE"}
+              onChange={e => setConsultationType(e.target.value)}
+            /> Qua điện thoại
+          </label>
         </div>
+
+        <button className="btn btn-success" onClick={handleSubmit}>
+          ➕ Đăng ký tư vấn
+        </button>
       </div>
-      <hr className="my-4" />
+
+      <hr />
 
       <h5>📋 Lịch tư vấn đã đăng ký</h5>
 
-      <table className="table table-bordered mt-3">
-        <thead className="table-light">
+      <table className="table table-bordered">
+        <thead>
           <tr>
             <th>#</th>
             <th>Giảng viên</th>
             <th>Ngày</th>
             <th>Giờ</th>
             <th>Lý do</th>
+            <th>Hình thức</th>
             <th>Trạng thái</th>
-            <th>Hành động</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {appointments.length === 0 && (
             <tr>
-              <td colSpan={7} className="text-center text-muted">
-                Chưa có cuộc hẹn nào
+              <td colSpan={8} className="text-center">
+                Chưa có cuộc hẹn
               </td>
             </tr>
           )}
 
-          {appointments.map((a, index) => (
+          {appointments.map((a, i) => (
             <tr key={a.id}>
-              <td>{index + 1}</td>
+              <td>{i + 1}</td>
               <td>{a.lecturerName || "Chưa phân công"}</td>
               <td>{a.date}</td>
               <td>{a.time}</td>
               <td>{a.reason}</td>
-              <td>
-                <span
-                  className={
-                    a.statusCode === "PENDING"
-                      ? "badge bg-warning"
-                      : a.statusCode === "APPROVED"
-                        ? "badge bg-success"
-                        : "badge bg-secondary"
-                  }
-                >
-                  {a.statusDescription}
-                </span>
-              </td>
+              <td>{a.consultationType === "IN_PERSON" ? "Trực tiếp" : "Điện thoại"}</td>
+              <td>{a.statusDescription}</td>
               <td>
                 {a.statusCode === "PENDING" && (
                   <button
@@ -295,12 +280,8 @@ const ConsultationPage = () => {
           ))}
         </tbody>
       </table>
-
     </div>
-
   );
-
 };
-
 
 export default ConsultationPage;
