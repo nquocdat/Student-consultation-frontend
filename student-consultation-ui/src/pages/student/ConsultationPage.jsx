@@ -1,5 +1,20 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 
+// 1. TẠO GIỜ TIÊU CHUẨN (Dùng để hiển thị khi chưa có lịch rảnh nào - Chế độ chờ)
+const generateStandardTimes = () => {
+  const times = [];
+  const startHour = 7; 
+  const endHour = 17; 
+  for (let i = startHour; i <= endHour; i++) {
+    if (i === 12) continue; 
+    if (i === 11) { times.push(`${i}:00`, `${i}:15`, `${i}:30`); continue; } 
+    if (i === 13) { times.push(`${i}:30`, `${i}:45`); continue; } 
+    times.push(`${(i<10?'0':'')+i}:00`, `${(i<10?'0':'')+i}:15`, `${(i<10?'0':'')+i}:30`, `${(i<10?'0':'')+i}:45`);
+  }
+  return times;
+};
+const STANDARD_TIMES = generateStandardTimes();
+
 const ConsultationPage = () => {
   const token = localStorage.getItem("token");
 
@@ -12,21 +27,15 @@ const ConsultationPage = () => {
     reason: "",
   });
 
-  // State Hình thức tư vấn
   const [consultationType, setConsultationType] = useState("IN_PERSON");
-
-  // State File & Ref
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
-
-  // Data
   const [lecturers, setLecturers] = useState([]);
   const [appointments, setAppointments] = useState([]);
   
-  // 🆕 STATE MỚI: Danh sách giờ hợp lệ lấy từ Server
-  const [validStartTimes, setValidStartTimes] = useState([]);
-
-  // Hiển thị giờ kết thúc dự kiến
+  // 🆕 STATE LOGIC MỚI:
+  const [validStartTimes, setValidStartTimes] = useState([]); // List giờ hiển thị (Dynamic hoặc Standard)
+  const [isQueueing, setIsQueueing] = useState(false);        // Cờ: true = Đang đặt chờ (chưa có GV rảnh)
   const [endTimePreview, setEndTimePreview] = useState("");
 
   /* ================= HELPERS: TÍNH GIỜ KẾT THÚC ================= */
@@ -54,46 +63,52 @@ const ConsultationPage = () => {
   }, [token]);
 
   useEffect(() => {
-    // Load danh sách giảng viên
     fetch("http://localhost:8080/api/lecturers")
       .then(res => res.json())
       .then(setLecturers)
       .catch(console.error);
-    
     loadAppointments();
   }, [loadAppointments]);
 
-  /* ================= 🆕 LOAD GIỜ HỢP LỆ TỪ SERVER ================= */
-  // Logic: Khi chọn Ngày, GV, Thời lượng -> Gọi API lấy các giờ bắt đầu phù hợp
+  /* ================= 🆕 LOGIC TÌM GIỜ THÔNG MINH + ĐẶT CHỜ ================= */
   useEffect(() => {
-    if (form.date && form.lecturerId && form.duration) {
+    // Chỉ cần Ngày và Thời lượng là bắt đầu tìm
+    if (form.date && form.duration) {
         
-        console.log("🔄 Đang tìm giờ phù hợp từ server...");
-        
-        // Gọi API Backend (API này bạn đã viết ở bước trước)
-        fetch(`http://localhost:8080/api/schedule/valid-times?lecturerId=${form.lecturerId}&date=${form.date}&duration=${form.duration}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => {
-            if (!res.ok) throw new Error("Lỗi tải giờ rảnh");
-            return res.json();
-        })
-        .then(data => {
-            console.log("✅ Giờ hợp lệ:", data);
-            setValidStartTimes(data); 
+        // Xây dựng URL
+        let url = `http://localhost:8080/api/schedule/valid-times?date=${form.date}&duration=${form.duration}`;
+        if (form.lecturerId) {
+            url += `&lecturerId=${form.lecturerId}`;
+        }
 
-            // Nếu giờ đang chọn trước đó không còn nằm trong danh sách mới -> Reset
-            if (form.startTime && !data.includes(form.startTime)) {
-                setForm(prev => ({...prev, startTime: ""}));
+        fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => res.json())
+        .then(data => {
+            if (data.length > 0) {
+                // TRƯỜNG HỢP 1: Có lịch rảnh thực tế
+                console.log("✅ Có GV rảnh");
+                setValidStartTimes(data);
+                setIsQueueing(false);
+            } else {
+                // TRƯỜNG HỢP 2: Không ai rảnh -> Chuyển sang chế độ "Đặt chờ" (dùng giờ chuẩn)
+                console.log("⚠️ Không có lịch -> Chuyển sang đặt chờ");
+                setValidStartTimes(STANDARD_TIMES);
+                setIsQueueing(true);
+            }
+            
+            // Nếu giờ đã chọn không còn hợp lệ trong list mới (dù là standard hay dynamic) -> Reset
+            // Logic: Nếu đang queueing thì cho phép chọn mọi giờ standard
+            if (form.startTime && !isQueueing && !data.includes(form.startTime)) {
+                 // reset nếu không queueing và giờ không khớp
             }
         })
-        .catch(err => {
-            console.error(err);
-            setValidStartTimes([]); // Nếu lỗi hoặc không có giờ -> Rỗng
+        .catch(() => {
+            // Lỗi API -> Fallback về đặt chờ
+            setValidStartTimes(STANDARD_TIMES);
+            setIsQueueing(true);
         });
 
     } else {
-        // Nếu chưa chọn đủ thông tin -> Xóa danh sách giờ
         setValidStartTimes([]);
     }
   }, [form.date, form.lecturerId, form.duration, token]);
@@ -141,41 +156,27 @@ const ConsultationPage = () => {
       return;
     }
 
-    // 1. Tính giờ kết thúc chính xác
     const finalEndTime = calculateEndTime(form.startTime, form.duration);
-    
-    // 2. Ghép thành chuỗi "HH:mm - HH:mm" để gửi Backend
     const timeString = `${form.startTime} - ${finalEndTime}`;
 
     const payload = {
       lecturerId: form.lecturerId ? Number(form.lecturerId) : null,
       date: form.date,
-      time: timeString, // Gửi chuỗi: "08:00 - 08:30"
+      time: timeString, 
       reason: form.reason,
       consultationType: consultationType,
     };
 
-    console.log("Payload gửi đi:", payload);
-
     try {
-      // 3. Gọi API tạo lịch
       const createRes = await fetch("http://localhost:8080/api/appointment/create", {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
 
-      if (!createRes.ok) {
-         const msg = await createRes.text();
-         throw new Error(msg || "Lỗi tạo lịch hẹn");
-      }
-
+      if (!createRes.ok) throw new Error(await createRes.text());
       const newAppt = await createRes.json();
       
-      // 4. Upload file (Nếu có)
       if (selectedFile && newAppt.id) {
         const formData = new FormData();
         formData.append("file", selectedFile);
@@ -184,18 +185,20 @@ const ConsultationPage = () => {
         });
       }
 
-      alert(`Đăng ký thành công! (Khung giờ: ${timeString})`);
+      // Thông báo thông minh
+      if (newAppt.lecturerId === null) {
+          alert(`Đã gửi yêu cầu đặt chờ! (Khung giờ: ${timeString})\nHệ thống sẽ tìm giảng viên phù hợp cho bạn sau.`);
+      } else {
+          alert(`Đăng ký thành công! (Khung giờ: ${timeString})`);
+      }
       
-      // Reset Form
       setForm({ lecturerId: "", date: "", startTime: "", duration: 30, reason: "" });
       setSelectedFile(null);
-      setValidStartTimes([]); // Reset list giờ
+      setValidStartTimes([]);
       if(fileInputRef.current) fileInputRef.current.value = "";
       loadAppointments();
 
-    } catch (err) {
-      alert("Lỗi: " + err.message);
-    }
+    } catch (err) { alert("Lỗi: " + err.message); }
   };
 
   const cancelAppointment = (id) => {
@@ -223,7 +226,7 @@ const ConsultationPage = () => {
                 <label className="fw-bold">👨‍🏫 Giảng viên</label>
                 <select className="form-control" name="lecturerId" 
                         value={form.lecturerId} onChange={handleChange}>
-                    <option value="">-- Chọn giảng viên --</option>
+                    <option value="">-- Hệ thống tự phân công --</option>
                     {lecturers.map(l => <option key={l.id} value={l.id}>{l.fullName}</option>)}
                 </select>
             </div>
@@ -242,7 +245,7 @@ const ConsultationPage = () => {
             </div>
         </div>
 
-        {/* --- 4. CHỌN GIỜ BẮT ĐẦU (Lấy từ API) --- */}
+        {/* --- 4. CHỌN GIỜ BẮT ĐẦU (Dynamic) --- */}
         <div className="mb-3">
             <label className="fw-bold">⏰ Giờ bắt đầu phù hợp <span className="text-danger">*</span></label>
             <select className="form-control" name="startTime" 
@@ -250,24 +253,27 @@ const ConsultationPage = () => {
                     disabled={validStartTimes.length === 0}>
                 
                 <option value="">
-                    {/* Hiển thị thông báo thông minh trong dropdown */}
                     {validStartTimes.length === 0 
-                        ? (form.date && form.lecturerId 
-                            ? "-- Không có giờ phù hợp / Đã kín lịch --" 
-                            : "-- Vui lòng chọn Ngày & Giảng viên trước --") 
+                        ? (form.date ? "-- Vui lòng chờ tải..." : "-- Chọn ngày trước --") 
                         : "-- Chọn giờ bắt đầu --"}
                 </option>
 
-                {/* Render danh sách giờ lấy từ Server */}
                 {validStartTimes.map(t => (
                     <option key={t} value={t}>{t}</option>
                 ))}
             </select>
             
+            {/* Logic hiển thị cảnh báo nếu đang Queueing */}
+            {isQueueing && form.date && (
+                 <small className="text-danger fw-bold mt-1 d-block">
+                    * Chưa có lịch rảnh chính thức. Bạn sẽ được xếp vào danh sách chờ.
+                 </small>
+            )}
+
             {/* Preview Kết quả */}
             {endTimePreview && (
-                <div className="alert alert-success mt-2 py-2 mb-0">
-                    ✅ Cuộc hẹn dự kiến: <strong>{form.startTime}</strong> ➝ <strong>{endTimePreview}</strong>
+                <div className="alert alert-info mt-2 py-2 mb-0">
+                    ℹ️ Thời gian cuộc hẹn: <strong>{form.startTime}</strong> ➝ <strong>{endTimePreview}</strong>
                 </div>
             )}
         </div>
@@ -339,7 +345,14 @@ const ConsultationPage = () => {
             {appointments.map((a, i) => (
                 <tr key={a.id}>
                     <td>{i + 1}</td>
-                    <td>{a.lecturerName || <span className="text-secondary fst-italic">Chờ xếp GV</span>}</td>
+                    <td>
+                        {/* Logic hiển thị nếu chưa có GV (Đang chờ) */}
+                        {a.lecturerName ? (
+                            a.lecturerName 
+                        ) : (
+                            <span className="text-danger fst-italic fw-bold">⏳ Đang tìm GV...</span>
+                        )}
+                    </td>
                     <td>
                         <div>📅 {a.date}</div>
                         <div className="fw-bold text-primary">⏰ {a.time}</div>
