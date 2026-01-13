@@ -8,46 +8,62 @@ export default function LecturerAppointments() {
     const [loading, setLoading] = useState(true);
 
 
-    const downloadAttachment = async (file) => {
-    try {
-        const rawToken = localStorage.getItem("accessToken");
-        const token = rawToken?.startsWith('"')
-            ? JSON.parse(rawToken)
-            : rawToken;
+    const downloadAttachment = async (appointmentId, file) => {
+        try {
+            // 🛠️ SỬA 1: Lấy đúng key "token" (hoặc thử cả 2 nếu không chắc)
+            let token = localStorage.getItem("token") || localStorage.getItem("accessToken");
 
-        const res = await axios.get(
-            `http://localhost:8080/api/appointment/${file.id}/download`,
-            {
+            // Kiểm tra xem có lấy được không
+            console.log("🔑 Token lấy được:", token);
+
+            if (!token) {
+                alert("Phiên đăng nhập hết hạn hoặc lỗi token. Vui lòng đăng nhập lại!");
+                return;
+            }
+
+            // Xử lý nếu token bị dính dấu ngoặc kép "..." do JSON.stringify
+            if (token.startsWith('"') && token.endsWith('"')) {
+                token = token.slice(1, -1);
+            }
+
+            // 🛠️ SỬA 2: Sửa URL cho khớp với Backend AttachmentController
+            // Backend: @RequestMapping("/api/attachments") -> GetMapping("/{id}/download")
+            const url = `http://localhost:8080/api/appointment/${file.id}/download`;
+            
+            console.log("📥 Đang tải từ URL:", url);
+
+            const res = await axios.get(url, {
                 responseType: "blob",
                 headers: {
-                    Authorization: `Bearer ${token}`
+                    Authorization: `Bearer ${token}` // Token giờ chắc chắn có giá trị
                 }
+            });
+
+            // Tạo link tải
+            const blob = new Blob([res.data], {
+                type: file.fileType || "application/octet-stream"
+            });
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = downloadUrl;
+            a.download = file.fileName; // Tên file
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+
+        } catch (err) {
+            console.error("DOWNLOAD ERROR:", err);
+            // Hiển thị lỗi chi tiết hơn
+            if (err.response && err.response.status === 403) {
+                alert("⛔ Bạn không có quyền tải file này (Lỗi 403).");
+            } else if (err.response && err.response.status === 404) {
+                alert("❌ File không tồn tại trên hệ thống (Lỗi 404).");
+            } else {
+                alert("❌ Lỗi tải file: " + err.message);
             }
-        );
-
-        const blob = new Blob([res.data], {
-            type: file.fileType || "application/octet-stream"
-        });
-
-        const url = window.URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = file.fileName;
-        document.body.appendChild(a);
-        a.click();
-
-        a.remove();
-        window.URL.revokeObjectURL(url);
-
-    } catch (err) {
-        console.error("DOWNLOAD ERROR:", err.response || err);
-        alert("❌ Không tải được file");
-    }
-};
-
-
-
+        }
+    };
 
 
     const loadAppointments = async () => {
@@ -142,7 +158,7 @@ export default function LecturerAppointments() {
                 rel="noopener noreferrer"
                 className="btn btn-outline-primary btn-sm"
             >
-                📎 Xem file
+                 Xem file
             </a>
         );
     };
@@ -198,10 +214,11 @@ export default function LecturerAppointments() {
                                         <div key={file.id}>
                                             <button
                                                 className="btn btn-link p-0 text-decoration-none"
-                                                onClick={() => downloadAttachment(file)}
+                                                onClick={() => downloadAttachment(appt.id, file)}
                                             >
                                                 📎 {file.fileName}
                                             </button>
+
                                         </div>
                                     ))
                                 ) : (
