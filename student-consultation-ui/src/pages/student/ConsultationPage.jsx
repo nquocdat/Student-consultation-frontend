@@ -1,41 +1,18 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 
-// 🕒 1. TẠO DANH SÁCH GIỜ BẮT ĐẦU (Bước nhảy 15 phút)
-// Sinh viên chọn giờ bắt đầu, sau đó chọn thời lượng bao lâu
-const generateStartTimes = () => {
-  const times = [];
-  const startHour = 7; 
-  const endHour = 17; 
-
-  for (let i = startHour; i <= endHour; i++) {
-    // Nghỉ trưa 11:30 - 13:30 (Tuỳ chỉnh theo trường bạn)
-    if (i === 12) continue; 
-    if (i === 11) { times.push(`${i}:00`, `${i}:15`, `${i}:30`); continue; } 
-    if (i === 13) { times.push(`${i}:30`, `${i}:45`); continue; } 
-
-    times.push(`${(i < 10 ? '0' : '') + i}:00`);
-    times.push(`${(i < 10 ? '0' : '') + i}:15`);
-    times.push(`${(i < 10 ? '0' : '') + i}:30`);
-    times.push(`${(i < 10 ? '0' : '') + i}:45`);
-  }
-  return times;
-};
-
-const START_TIMES = generateStartTimes();
-
 const ConsultationPage = () => {
   const token = localStorage.getItem("token");
 
   // --- STATE ---
   const [form, setForm] = useState({
-    lecturerId: "", // Có thể null
+    lecturerId: "", 
     date: "",
-    startTime: "",  // Giờ bắt đầu (VD: 07:15)
+    startTime: "",  // Giờ bắt đầu
     duration: 30,   // Thời lượng mặc định 30 phút
     reason: "",
   });
 
-  // State Hình thức tư vấn (Quan trọng)
+  // State Hình thức tư vấn
   const [consultationType, setConsultationType] = useState("IN_PERSON");
 
   // State File & Ref
@@ -46,7 +23,10 @@ const ConsultationPage = () => {
   const [lecturers, setLecturers] = useState([]);
   const [appointments, setAppointments] = useState([]);
   
-  // Hiển thị giờ kết thúc dự kiến cho sinh viên xem
+  // 🆕 STATE MỚI: Danh sách giờ hợp lệ lấy từ Server
+  const [validStartTimes, setValidStartTimes] = useState([]);
+
+  // Hiển thị giờ kết thúc dự kiến
   const [endTimePreview, setEndTimePreview] = useState("");
 
   /* ================= HELPERS: TÍNH GIỜ KẾT THÚC ================= */
@@ -62,7 +42,7 @@ const ConsultationPage = () => {
     return `${(newH < 10 ? '0' : '') + newH}:${(newM < 10 ? '0' : '') + newM}`;
   };
 
-  /* ================= LOAD DATA ================= */
+  /* ================= LOAD INITIAL DATA ================= */
   const loadAppointments = useCallback(() => {
     if (!token) return;
     fetch("http://localhost:8080/api/appointment/my", {
@@ -74,12 +54,49 @@ const ConsultationPage = () => {
   }, [token]);
 
   useEffect(() => {
+    // Load danh sách giảng viên
     fetch("http://localhost:8080/api/lecturers")
       .then(res => res.json())
       .then(setLecturers)
       .catch(console.error);
+    
     loadAppointments();
   }, [loadAppointments]);
+
+  /* ================= 🆕 LOAD GIỜ HỢP LỆ TỪ SERVER ================= */
+  // Logic: Khi chọn Ngày, GV, Thời lượng -> Gọi API lấy các giờ bắt đầu phù hợp
+  useEffect(() => {
+    if (form.date && form.lecturerId && form.duration) {
+        
+        console.log("🔄 Đang tìm giờ phù hợp từ server...");
+        
+        // Gọi API Backend (API này bạn đã viết ở bước trước)
+        fetch(`http://localhost:8080/api/schedule/valid-times?lecturerId=${form.lecturerId}&date=${form.date}&duration=${form.duration}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Lỗi tải giờ rảnh");
+            return res.json();
+        })
+        .then(data => {
+            console.log("✅ Giờ hợp lệ:", data);
+            setValidStartTimes(data); 
+
+            // Nếu giờ đang chọn trước đó không còn nằm trong danh sách mới -> Reset
+            if (form.startTime && !data.includes(form.startTime)) {
+                setForm(prev => ({...prev, startTime: ""}));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            setValidStartTimes([]); // Nếu lỗi hoặc không có giờ -> Rỗng
+        });
+
+    } else {
+        // Nếu chưa chọn đủ thông tin -> Xóa danh sách giờ
+        setValidStartTimes([]);
+    }
+  }, [form.date, form.lecturerId, form.duration, token]);
 
   /* ================= HANDLE CHANGE & EFFECT ================= */
   const handleChange = (e) => {
@@ -87,7 +104,7 @@ const ConsultationPage = () => {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  // Tự động tính toán giờ kết thúc khi user thay đổi giờ bắt đầu hoặc thời lượng
+  // Tự động tính toán giờ kết thúc để hiển thị Preview
   useEffect(() => {
     if (form.startTime && form.duration) {
         const end = calculateEndTime(form.startTime, form.duration);
@@ -117,31 +134,31 @@ const ConsultationPage = () => {
     .catch(e => alert(e.message));
   };
 
-  /* ================= SUBMIT (QUAN TRỌNG) ================= */
+  /* ================= SUBMIT ================= */
   const handleSubmit = async () => {
     if (!form.date || !form.startTime) {
       alert("Vui lòng chọn Ngày và Giờ bắt đầu!");
       return;
     }
 
-    // Tính giờ kết thúc chính xác để gửi lên Server
+    // 1. Tính giờ kết thúc chính xác
     const finalEndTime = calculateEndTime(form.startTime, form.duration);
     
-    // Ghép thành chuỗi "HH:mm - HH:mm"
+    // 2. Ghép thành chuỗi "HH:mm - HH:mm" để gửi Backend
     const timeString = `${form.startTime} - ${finalEndTime}`;
 
     const payload = {
       lecturerId: form.lecturerId ? Number(form.lecturerId) : null,
       date: form.date,
-      time: timeString, // Gửi chuỗi thời gian đã tính toán
+      time: timeString, // Gửi chuỗi: "08:00 - 08:30"
       reason: form.reason,
-      consultationType: consultationType, // Gửi hình thức
+      consultationType: consultationType,
     };
 
     console.log("Payload gửi đi:", payload);
 
     try {
-      // 1. Tạo lịch hẹn
+      // 3. Gọi API tạo lịch
       const createRes = await fetch("http://localhost:8080/api/appointment/create", {
         method: "POST",
         headers: {
@@ -158,7 +175,7 @@ const ConsultationPage = () => {
 
       const newAppt = await createRes.json();
       
-      // 2. Upload file (Nếu có)
+      // 4. Upload file (Nếu có)
       if (selectedFile && newAppt.id) {
         const formData = new FormData();
         formData.append("file", selectedFile);
@@ -172,6 +189,7 @@ const ConsultationPage = () => {
       // Reset Form
       setForm({ lecturerId: "", date: "", startTime: "", duration: 30, reason: "" });
       setSelectedFile(null);
+      setValidStartTimes([]); // Reset list giờ
       if(fileInputRef.current) fileInputRef.current.value = "";
       loadAppointments();
 
@@ -189,7 +207,7 @@ const ConsultationPage = () => {
 
   return (
     <div>
-      <h4 className="mb-3">⏱️ Đăng ký tư vấn (Linh hoạt thời gian)</h4>
+      <h4 className="mb-3">⏱️ Đăng ký tư vấn (Tìm giờ rảnh thông minh)</h4>
 
       <div className="card p-3 shadow-sm bg-light">
         <div className="row">
@@ -205,12 +223,12 @@ const ConsultationPage = () => {
                 <label className="fw-bold">👨‍🏫 Giảng viên</label>
                 <select className="form-control" name="lecturerId" 
                         value={form.lecturerId} onChange={handleChange}>
-                    <option value="">-- Hệ thống tự phân công --</option>
+                    <option value="">-- Chọn giảng viên --</option>
                     {lecturers.map(l => <option key={l.id} value={l.id}>{l.fullName}</option>)}
                 </select>
             </div>
             
-            {/* --- 3. THỜI LƯỢNG (Chọn độ dài cuộc hẹn) --- */}
+            {/* --- 3. THỜI LƯỢNG --- */}
             <div className="col-md-4 mb-3">
                 <label className="fw-bold">⏳ Thời lượng mong muốn</label>
                 <select className="form-control" name="duration" 
@@ -224,23 +242,32 @@ const ConsultationPage = () => {
             </div>
         </div>
 
-        {/* --- 4. CHỌN GIỜ BẮT ĐẦU (Từng mốc 15p) --- */}
+        {/* --- 4. CHỌN GIỜ BẮT ĐẦU (Lấy từ API) --- */}
         <div className="mb-3">
-            <label className="fw-bold">⏰ Giờ bắt đầu <span className="text-danger">*</span></label>
+            <label className="fw-bold">⏰ Giờ bắt đầu phù hợp <span className="text-danger">*</span></label>
             <select className="form-control" name="startTime" 
-                    value={form.startTime} onChange={handleChange} disabled={!form.date}>
+                    value={form.startTime} onChange={handleChange} 
+                    disabled={validStartTimes.length === 0}>
+                
                 <option value="">
-                    {!form.date ? "-- Vui lòng chọn ngày trước --" : "-- Chọn giờ bắt đầu --"}
+                    {/* Hiển thị thông báo thông minh trong dropdown */}
+                    {validStartTimes.length === 0 
+                        ? (form.date && form.lecturerId 
+                            ? "-- Không có giờ phù hợp / Đã kín lịch --" 
+                            : "-- Vui lòng chọn Ngày & Giảng viên trước --") 
+                        : "-- Chọn giờ bắt đầu --"}
                 </option>
-                {START_TIMES.map(t => (
+
+                {/* Render danh sách giờ lấy từ Server */}
+                {validStartTimes.map(t => (
                     <option key={t} value={t}>{t}</option>
                 ))}
             </select>
             
-            {/* Hiển thị Preview: "Cuộc hẹn từ 08:00 đến 08:30" */}
+            {/* Preview Kết quả */}
             {endTimePreview && (
-                <div className="alert alert-info mt-2 py-2 mb-0">
-                    ℹ️ Thời gian cuộc hẹn: <strong>{form.startTime}</strong> ➝ <strong>{endTimePreview}</strong>
+                <div className="alert alert-success mt-2 py-2 mb-0">
+                    ✅ Cuộc hẹn dự kiến: <strong>{form.startTime}</strong> ➝ <strong>{endTimePreview}</strong>
                 </div>
             )}
         </div>
@@ -260,7 +287,7 @@ const ConsultationPage = () => {
             <small className="text-muted">Hỗ trợ PDF, Ảnh (Optional)</small>
         </div>
 
-        {/* --- 7. HÌNH THỨC TƯ VẤN (Radio Button) --- */}
+        {/* --- 7. HÌNH THỨC TƯ VẤN --- */}
         <div className="mb-3">
             <label className="fw-bold d-block">📞 Hình thức tư vấn:</label>
             <div className="mt-2">
