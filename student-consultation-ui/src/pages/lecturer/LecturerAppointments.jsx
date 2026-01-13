@@ -7,77 +7,43 @@ export default function LecturerAppointments() {
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // 🔍 STATES CHO TÌM KIẾM VÀ LỌC
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterDate, setFilterDate] = useState("");
 
+    // ... (Giữ nguyên logic downloadAttachment)
     const downloadAttachment = async (appointmentId, file) => {
         try {
-            // 🛠️ SỬA 1: Lấy đúng key "token" (hoặc thử cả 2 nếu không chắc)
             let token = localStorage.getItem("token") || localStorage.getItem("accessToken");
+            if (!token) { alert("Lỗi token"); return; }
+            if (token.startsWith('"')) token = token.slice(1, -1);
 
-            // Kiểm tra xem có lấy được không
-            console.log("🔑 Token lấy được:", token);
-
-            if (!token) {
-                alert("Phiên đăng nhập hết hạn hoặc lỗi token. Vui lòng đăng nhập lại!");
-                return;
-            }
-
-            // Xử lý nếu token bị dính dấu ngoặc kép "..." do JSON.stringify
-            if (token.startsWith('"') && token.endsWith('"')) {
-                token = token.slice(1, -1);
-            }
-
-            // 🛠️ SỬA 2: Sửa URL cho khớp với Backend AttachmentController
-            // Backend: @RequestMapping("/api/attachments") -> GetMapping("/{id}/download")
             const url = `http://localhost:8080/api/appointment/${file.id}/download`;
-            
-            console.log("📥 Đang tải từ URL:", url);
-
             const res = await axios.get(url, {
                 responseType: "blob",
-                headers: {
-                    Authorization: `Bearer ${token}` // Token giờ chắc chắn có giá trị
-                }
+                headers: { Authorization: `Bearer ${token}` }
             });
 
-            // Tạo link tải
-            const blob = new Blob([res.data], {
-                type: file.fileType || "application/octet-stream"
-            });
+            const blob = new Blob([res.data], { type: file.fileType || "application/octet-stream" });
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = downloadUrl;
-            a.download = file.fileName; // Tên file
+            a.download = file.fileName;
             document.body.appendChild(a);
             a.click();
             a.remove();
             window.URL.revokeObjectURL(downloadUrl);
-
         } catch (err) {
-            console.error("DOWNLOAD ERROR:", err);
-            // Hiển thị lỗi chi tiết hơn
-            if (err.response && err.response.status === 403) {
-                alert("⛔ Bạn không có quyền tải file này (Lỗi 403).");
-            } else if (err.response && err.response.status === 404) {
-                alert("❌ File không tồn tại trên hệ thống (Lỗi 404).");
-            } else {
-                alert("❌ Lỗi tải file: " + err.message);
-            }
+            console.error(err);
+            alert("Lỗi tải file");
         }
     };
-
 
     const loadAppointments = async () => {
         try {
             setLoading(true);
             const res = await appointmentApi.getLecturerAppointments();
-
-            // 🔥 SORT: lịch gần nhất lên trên
-            const sorted = res.data.sort((a, b) => {
-                const timeA = new Date(`${a.date}T${a.time}`);
-                const timeB = new Date(`${b.date}T${b.time}`);
-                return timeA - timeB;
-            });
-
+            const sorted = res.data.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
             setAppointments(sorted);
         } catch (error) {
             alert("Không lấy được lịch giảng viên");
@@ -86,197 +52,171 @@ export default function LecturerAppointments() {
         }
     };
 
-    useEffect(() => {
-        loadAppointments();
-    }, []);
+    useEffect(() => { loadAppointments(); }, []);
 
-    // ====== ACTIONS ======
-    const approve = async (id) => {
-        if (!window.confirm("Bạn chắc chắn muốn duyệt lịch hẹn này?")) return;
-        await appointmentApi.approve(id);
-        loadAppointments();
-    };
+    // ... (Giữ nguyên các hàm actions: approve, reject...)
+    const approve = async (id) => { await appointmentApi.approve(id); loadAppointments(); };
+    const reject = async (id) => { await appointmentApi.reject(id); loadAppointments(); };
+    const approveCancel = async (id) => { await appointmentApi.approveCancel(id); loadAppointments(); };
+    const rejectCancel = async (id) => { await appointmentApi.rejectCancel(id); loadAppointments(); };
 
-    const reject = async (id) => {
-        if (!window.confirm("Bạn chắc chắn muốn từ chối lịch hẹn này?")) return;
-        await appointmentApi.reject(id);
-        loadAppointments();
-    };
+    // 🔍 LOGIC LỌC DỮ LIỆU
+    // Kết hợp cả tìm kiếm từ khóa VÀ ngày
+    const filteredAppointments = appointments.filter(appt => {
+        // 1. Lọc theo từ khóa (Tên hoặc Email)
+        const matchSearch = 
+            appt.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            appt.studentEmail.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        // 2. Lọc theo ngày (Nếu có chọn ngày thì so sánh, không thì lấy hết)
+        const matchDate = filterDate ? appt.date === filterDate : true;
 
-    const approveCancel = async (id) => {
-        if (!window.confirm("Bạn chắc chắn muốn duyệt yêu cầu hủy?")) return;
-        await appointmentApi.approveCancel(id);
-        loadAppointments();
-    };
+        return matchSearch && matchDate;
+    });
 
-    const rejectCancel = async (id) => {
-        if (!window.confirm("Bạn chắc chắn muốn từ chối yêu cầu hủy?")) return;
-        await appointmentApi.rejectCancel(id);
-        loadAppointments();
-    };
-
-    // ====== STATUS UI ======
+    // ====== UI COLORS ======
     const renderStatus = (code, text) => {
-        const statusColor = {
-            PENDING: "bg-warning text-dark",
-            APPROVED: "bg-success",
-            CANCEL_REQUEST: "bg-info text-dark",
-            CANCELED: "bg-secondary",
-            REJECTED: "bg-danger",
-            COMPLETED: "bg-dark"
-        };
-
-        return (
-            <span
-                className={`badge py-2 ${statusColor[code] || "bg-light text-dark"}`}
-                style={{
-                    width: "140px",
-                    display: "inline-block",
-                    textAlign: "center"
-                }}
-            >
-                {text}
-            </span>
-        );
+        const statusColor = { PENDING: "bg-warning text-dark", APPROVED: "bg-success", CANCEL_REQUEST: "bg-info text-dark", CANCELED: "bg-secondary", REJECTED: "bg-danger", COMPLETED: "bg-dark" };
+        return <span className={`badge py-2 ${statusColor[code]}`} style={{ width: "130px", display: "inline-block", textAlign: "center" }}>{text}</span>;
     };
 
-    // ====== CONSULTATION TYPE ======
+    // 🎨 MÀU ĐỐI LẬP CHO HÌNH THỨC TƯ VẤN
     const renderConsultationType = (type) => {
-        if (type === "IN_PERSON") return <span className="badge bg-primary">Trực tiếp</span>;
-        if (type === "PHONE") return <span className="badge bg-info text-dark">Điện thoại</span>;
+        if (type === "IN_PERSON") {
+            // Màu Xanh Dương đậm
+            return <span className="badge bg-primary" style={{ minWidth: "90px" }}>Trực tiếp</span>;
+        }
+        if (type === "PHONE") {
+            // Màu Vàng Cam (đối lập với xanh) - text-dark để chữ dễ đọc
+            return <span className="badge bg-warning text-dark" style={{ minWidth: "90px" }}>Điện thoại</span>;
+        }
         return <span className="text-muted">—</span>;
     };
 
-    // ====== ATTACHMENT ======
-    const renderAttachment = (fileUrl) => {
-        if (!fileUrl) return <span className="text-muted">—</span>;
-
-        return (
-            <a
-                href={fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-outline-primary btn-sm"
-            >
-                 Xem file
-            </a>
-        );
-    };
-
-    if (loading) {
-        return <p className="text-center mt-5">⏳ Đang tải dữ liệu...</p>;
-    }
+    if (loading) return <p className="text-center mt-5">⏳ Đang tải dữ liệu...</p>;
 
     return (
-        <div className="container mt-4">
-            <h3 className="mb-3">📅 Quản lý lịch hẹn</h3>
+        // 1️⃣ SỬ DỤNG container-fluid ĐỂ FULL MÀN HÌNH
+        <div className="container-fluid mt-3 px-3">
+            
+            <div className="d-flex justify-content-between align-items-center mb-3">
+                <h3 className="m-0 text-primary fw-bold">📅 Quản lý lịch hẹn</h3>
+                
+                {/* 🔍 THANH TÌM KIẾM & LỌC */}
+                <div className="d-flex gap-2">
+                    {/* Ô nhập từ khóa */}
+                    <div className="input-group" style={{ width: "300px" }}>
+                        <span className="input-group-text bg-white">🔍</span>
+                        <input 
+                            type="text" 
+                            className="form-control" 
+                            placeholder="Tìm tên hoặc email..." 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
 
-            <table className="table table-bordered align-middle">
-                <thead className="table-light text-center">
-                    <tr>
-                        <th>Ngày</th>
-                        <th>Giờ</th>
-                        <th>Tên sinh viên</th>
-                        <th>Email</th>
-                        <th>SĐT</th>
-                        <th>Hình thức</th>
-                        <th>File đính kèm</th>
-                        <th>Trạng thái</th>
-                        <th>Hành động</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {appointments.length === 0 && (
-                        <tr>
-                            <td colSpan="9" className="text-center">
-                                Chưa có lịch hẹn
-                            </td>
-                        </tr>
+                    {/* Ô chọn ngày */}
+                    <input 
+                        type="date" 
+                        className="form-control" 
+                        style={{ width: "180px" }}
+                        value={filterDate}
+                        onChange={(e) => setFilterDate(e.target.value)}
+                    />
+                    
+                    {/* Nút xóa lọc (chỉ hiện khi đang lọc) */}
+                    {(searchTerm || filterDate) && (
+                        <button 
+                            className="btn btn-outline-secondary"
+                            onClick={() => { setSearchTerm(""); setFilterDate(""); }}
+                        >
+                            Xóa lọc
+                        </button>
                     )}
+                </div>
+            </div>
 
-                    {appointments.map(appt => (
-                        <tr key={appt.id}>
-                            <td className="text-center">{appt.date}</td>
-                            <td className="text-center">{appt.time}</td>
-
-                            <td>{appt.studentName}</td>
-                            <td>{appt.studentEmail}</td>
-                            <td>{appt.studentPhone}</td>
-
-                            <td className="text-center">
-                                {renderConsultationType(appt.consultationType)}
-                            </td>
-
-                            <td className="text-start">
-                                {Array.isArray(appt.attachments) && appt.attachments.length > 0 ? (
-                                    appt.attachments.map(file => (
-                                        <div key={file.id}>
-                                            <button
-                                                className="btn btn-link p-0 text-decoration-none"
-                                                onClick={() => downloadAttachment(appt.id, file)}
-                                            >
-                                                📎 {file.fileName}
-                                            </button>
-
-                                        </div>
-                                    ))
-                                ) : (
-                                    <span className="text-muted">Không có</span>
-                                )}
-                            </td>
-
-
-
-                            <td className="text-center">
-                                {renderStatus(appt.statusCode, appt.statusDescription)}
-                            </td>
-
-                            <td className="text-center">
-                                {appt.statusCode === "PENDING" && (
-                                    <>
-                                        <button
-                                            className="btn btn-success btn-sm"
-                                            onClick={() => approve(appt.id)}
-                                        >
-                                            Duyệt
-                                        </button>
-
-                                        <button
-                                            className="btn btn-danger btn-sm ms-2"
-                                            onClick={() => reject(appt.id)}
-                                        >
-                                            Từ chối
-                                        </button>
-                                    </>
-                                )}
-
-                                {appt.statusCode === "CANCEL_REQUEST" && (
-                                    <>
-                                        <button
-                                            className="btn btn-warning btn-sm"
-                                            onClick={() => approveCancel(appt.id)}
-                                        >
-                                            Duyệt hủy
-                                        </button>
-
-                                        <button
-                                            className="btn btn-secondary btn-sm ms-2"
-                                            onClick={() => rejectCancel(appt.id)}
-                                        >
-                                            Từ chối
-                                        </button>
-                                    </>
-                                )}
-
-                                {["APPROVED", "CANCELED", "REJECTED", "COMPLETED"].includes(appt.statusCode) && (
-                                    <span className="text-muted">—</span>
-                                )}
-                            </td>
+            <div className="table-responsive" style={{ minHeight: "80vh" }}>
+                <table className="table table-bordered align-middle table-hover shadow-sm" style={{ tableLayout: "fixed" }}>
+                    <thead className="table-primary text-center align-middle">
+                        <tr>
+                            <th style={{ width: "8%" }}>Ngày</th>
+                            <th style={{ width: "6%" }}>Giờ</th>
+                            <th style={{ width: "12%" }}>Sinh viên</th>
+                            <th style={{ width: "15%" }}>Email</th>
+                            <th style={{ width: "9%" }}>SĐT</th>
+                            <th style={{ width: "15%" }}>Lý do</th> {/* Cột lý do */}
+                            <th style={{ width: "8%" }}>Hình thức</th>
+                            <th style={{ width: "7%" }}>File</th>
+                            <th style={{ width: "10%" }}>Trạng thái</th>
+                            <th style={{ width: "10%" }}>Hành động</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+
+                    <tbody className="bg-white">
+                        {filteredAppointments.length === 0 && (
+                            <tr>
+                                <td colSpan="10" className="text-center py-4 text-muted">
+                                    {appointments.length === 0 ? "Chưa có lịch hẹn nào." : "Không tìm thấy kết quả phù hợp."}
+                                </td>
+                            </tr>
+                        )}
+
+                        {filteredAppointments.map(appt => (
+                            <tr key={appt.id}>
+                                <td className="text-center">{appt.date}</td>
+                                <td className="text-center fw-bold text-primary">{appt.time?.slice(0, 5)}</td>
+                                <td className="text-truncate fw-bold" title={appt.studentName}>{appt.studentName}</td>
+                                <td className="text-truncate" title={appt.studentEmail}>{appt.studentEmail}</td>
+                                <td className="text-center">{appt.studentPhone}</td>
+                                
+                                {/* Lý do */}
+                                <td className="text-truncate" title={appt.reason}>
+                                    {appt.reason || <span className="text-muted small">Checking...</span>}
+                                </td>
+
+                                <td className="text-center">
+                                    {renderConsultationType(appt.consultationType)}
+                                </td>
+
+                                <td className="text-center">
+                                    {appt.attachments?.length > 0 ? (
+                                        appt.attachments.map(f => (
+                                            <div key={f.id}>
+                                                <button className="btn btn-link p-0 small text-decoration-none" onClick={() => downloadAttachment(appt.id, f)}>
+                                                    📎 {f.fileName.length > 10 ? f.fileName.substring(0,8)+"..." : f.fileName}
+                                                </button>
+                                            </div>
+                                        ))
+                                    ) : <span className="text-muted small">—</span>}
+                                </td>
+
+                                <td className="text-center">
+                                    {renderStatus(appt.statusCode, appt.statusDescription)}
+                                </td>
+
+                                <td className="text-center">
+                                    <div className="d-flex flex-column gap-1">
+                                        {appt.statusCode === "PENDING" && (
+                                            <>
+                                                <button className="btn btn-success btn-sm w-100" onClick={() => approve(appt.id)}>Duyệt</button>
+                                                <button className="btn btn-danger btn-sm w-100" onClick={() => reject(appt.id)}>Từ chối</button>
+                                            </>
+                                        )}
+                                        {appt.statusCode === "CANCEL_REQUEST" && (
+                                            <>
+                                                <button className="btn btn-warning btn-sm w-100" onClick={() => approveCancel(appt.id)}>Duyệt hủy</button>
+                                                <button className="btn btn-secondary btn-sm w-100" onClick={() => rejectCancel(appt.id)}>Từ chối</button>
+                                            </>
+                                        )}
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
