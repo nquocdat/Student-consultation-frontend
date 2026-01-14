@@ -26,7 +26,7 @@ const Login = () => {
       // Timeout nhỏ để trải nghiệm mượt mà hơn (tùy chọn)
       setTimeout(() => {
         if (role === "STUDENT") {
-            navigate("/student/consultation"); // Hoặc đường dẫn bạn muốn
+            navigate("/student/create-request");
         } else if (role === "LECTURER") {
             navigate("/lecturer/dashboard");
         }
