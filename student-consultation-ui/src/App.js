@@ -10,6 +10,8 @@ import LecturerAppointments from "./pages/lecturer/LecturerAppointments";
 import LecturerLayout from "./components/lecturer/LecturerLayout";
 import LecturerDashboard from "./pages/lecturer/LecturerDashboard";
 import LecturerProfile from "./pages/lecturer/LecturerProfile";
+import StudentProfile from "./pages/student/StudentProfile";
+import ForgotPassword from "./components/ForgotPassword";
 
 
 function App() {
@@ -20,6 +22,7 @@ function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* ======================================================= */}
         {/* STUDENT - PHẢI QUA LAYOUT                               */}
@@ -34,6 +37,8 @@ function App() {
           
           {/* Mặc định: Nếu vào /student thì chuyển hướng luôn sang trang Tạo yêu cầu */}
           <Route index element={<Navigate to="create-request" replace />} />
+          {/* 👇 THÊM ROUTE PROFILE */}
+          <Route path="profile" element={<StudentProfile />} />
           
         </Route>
 

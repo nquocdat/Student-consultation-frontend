@@ -9,28 +9,31 @@ import ConsultationHistory from "../pages/student/ConsultationHistory";
 // (Các import cũ khác...)
 import MyAppointments from "../pages/student/MyAppointments";
 import LecturerAppointments from "../pages/lecturer/LecturerAppointments";
+import StudentProfile from "../pages/student/StudentProfile";
 
 const AppRouter = () => {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-        
+
         {/* Redirect trang chủ về login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* STUDENT - BẮT BUỘC QUA LAYOUT */}
         <Route path="/student/*" element={<StudentLayout />}>
-          
+
           {/* 👇 2. THÊM 2 ROUTE MỚI NÀY */}
           <Route path="create-request" element={<CreateConsultation />} />
           <Route path="history" element={<ConsultationHistory />} />
 
           {/* Các route cũ (nếu còn dùng) */}
           <Route path="appointments" element={<MyAppointments />} />
-          
+
           {/* Mặc định khi vào /student thì chuyển hướng sang trang tạo yêu cầu */}
           <Route index element={<Navigate to="create-request" replace />} />
+          {/* 👇 THÊM ROUTE PROFILE */}
+          <Route path="profile" element={<StudentProfile />} />
 
         </Route>
 
