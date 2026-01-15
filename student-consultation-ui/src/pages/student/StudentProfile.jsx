@@ -2,18 +2,15 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
 const StudentProfile = () => {
-    // 1. State lưu dữ liệu
+    // 1. State
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    
-    // State xử lý ảnh preview khi chọn file
-    const [previewImage, setPreviewImage] = useState(null);
+    const [previewImage, setPreviewImage] = useState(null); // Để xem trước ảnh
 
-    // Cấu hình Domain Backend
     const DOMAIN = "http://localhost:8080";
 
-    // 2. Hàm lấy dữ liệu Profile (Tách ra để tái sử dụng sau khi upload)
+    // 2. Lấy thông tin Profile
     const fetchProfile = async () => {
         try {
             const token = localStorage.getItem("token");
@@ -40,15 +37,13 @@ const StudentProfile = () => {
         fetchProfile();
     }, []);
 
-    // 3. Hàm xử lý chọn file và tự động upload ngay lập tức
+    // 3. Xử lý Upload Avatar (Được phép)
     const handleFileChange = async (event) => {
         const file = event.target.files[0];
         if (!file) return;
 
-        // Hiện ảnh xem trước ngay lập tức
-        setPreviewImage(URL.createObjectURL(file));
+        setPreviewImage(URL.createObjectURL(file)); // Hiện ảnh xem trước
 
-        // Chuẩn bị form data
         const formData = new FormData();
         formData.append("file", file);
 
@@ -60,23 +55,26 @@ const StudentProfile = () => {
                     "Content-Type": "multipart/form-data",
                 },
             });
-
             alert("Cập nhật ảnh đại diện thành công!");
-            // Gọi lại API để cập nhật dữ liệu gốc từ Server
-            fetchProfile();
-
+            fetchProfile(); // Load lại để lấy link ảnh chuẩn từ server
         } catch (err) {
             console.error("Lỗi upload:", err);
             alert("Lỗi khi cập nhật ảnh đại diện!");
         }
     };
 
-    // 4. Render giao diện
+    // 4. Xử lý Đổi mật khẩu (Được phép)
+    const handleChangePassword = () => {
+        // Chỗ này bạn sẽ điều hướng sang trang đổi pass hoặc mở Modal
+        // Ví dụ: navigate('/change-password')
+        alert("Tính năng đổi mật khẩu sẽ hiện Modal hoặc chuyển trang tại đây!");
+    };
+
+    // --- RENDER ---
     if (loading) return <div className="text-center mt-5">Loading...</div>;
     if (error) return <div className="text-center mt-5 text-danger">{error}</div>;
     if (!profile) return null;
 
-    // Logic chọn nguồn ảnh: Preview (ưu tiên) -> Ảnh từ DB -> Ảnh mặc định
     const defaultAvatar = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
     const avatarSrc = previewImage || (profile.avatar ? `${DOMAIN}${profile.avatar}` : defaultAvatar);
 
@@ -85,7 +83,8 @@ const StudentProfile = () => {
             <div className="card shadow p-4">
                 <h3 className="text-primary mb-4 text-center">👤 Hồ Sơ Sinh Viên</h3>
                 <div className="row">
-                    {/* --- CỘT TRÁI: AVATAR & UPLOAD --- */}
+                    
+                    {/* --- CỘT TRÁI: AVATAR & ĐỔI MẬT KHẨU --- */}
                     <div className="col-md-4 text-center border-end">
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <img 
@@ -93,11 +92,10 @@ const StudentProfile = () => {
                                 alt="Avatar" 
                                 className="img-thumbnail rounded-circle mb-3"
                                 style={{ width: "180px", height: "180px", objectFit: "cover", cursor: "pointer" }}
-                                // Khi click vào ảnh thì kích hoạt input file
                                 onClick={() => document.getElementById('fileInput').click()}
+                                title="Bấm để đổi ảnh đại diện"
                             />
                             
-                            {/* Input file bị ẩn đi */}
                             <input 
                                 id="fileInput" 
                                 type="file" 
@@ -106,7 +104,6 @@ const StudentProfile = () => {
                                 accept="image/*"
                             />
 
-                            {/* Nút bấm nhỏ gợi ý đổi ảnh */}
                             <div 
                                 className="mt-1 text-primary" 
                                 style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: "bold" }}
@@ -118,11 +115,22 @@ const StudentProfile = () => {
 
                         <h4 className="mt-3">{profile.fullName}</h4>
                         <p className="text-muted">{profile.studentCode}</p>
-                        <button className="btn btn-warning mt-2 w-75">✏️ Chỉnh sửa hồ sơ</button>
+
+                        {/* Thay nút "Chỉnh sửa hồ sơ" thành nút "Đổi mật khẩu" */}
+                        <button 
+                            className="btn btn-outline-danger mt-3 w-75"
+                            onClick={handleChangePassword}
+                        >
+                            🔒 Đổi mật khẩu
+                        </button>
                     </div>
 
-                    {/* --- CỘT PHẢI: THÔNG TIN CHI TIẾT (Giữ nguyên code cũ) --- */}
+                    {/* --- CỘT PHẢI: CHỈ HIỂN THỊ THÔNG TIN (READ-ONLY) --- */}
                     <div className="col-md-8 px-4">
+                        <div className="alert alert-info py-2" style={{fontSize: '0.9rem'}}>
+                            ℹ️ Thông tin cá nhân được quản lý bởi nhà trường. Nếu có sai sót, vui lòng liên hệ phòng đào tạo.
+                        </div>
+
                         <h5 className="mb-3 text-secondary">Thông tin cơ bản</h5>
                         <hr />
                         
