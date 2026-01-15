@@ -2,66 +2,126 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
 const StudentProfile = () => {
-    // 1. State để lưu dữ liệu từ API
+    // 1. State lưu dữ liệu
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    
+    // State xử lý ảnh preview khi chọn file
+    const [previewImage, setPreviewImage] = useState(null);
 
-    // 2. Gọi API ngay khi trang được tải (Mount)
-    useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                // Lấy token từ localStorage
-                const token = localStorage.getItem("token");
-                if (!token) {
-                    setError("Bạn chưa đăng nhập!");
-                    setLoading(false);
-                    return;
-                }
+    // Cấu hình Domain Backend
+    const DOMAIN = "http://localhost:8080";
 
-                // Gọi API Backend
-                const response = await axios.get("http://localhost:8080/api/students/me", {
-                    headers: {
-                        Authorization: `Bearer ${token}` // Gửi kèm token xác thực
-                    }
-                });
-
-                setProfile(response.data); // Lưu dữ liệu vào state
-            } catch (err) {
-                console.error("Lỗi tải thông tin:", err);
-                setError("Không thể tải thông tin cá nhân.");
-            } finally {
-                setLoading(false); // Tắt trạng thái loading
+    // 2. Hàm lấy dữ liệu Profile (Tách ra để tái sử dụng sau khi upload)
+    const fetchProfile = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                setError("Bạn chưa đăng nhập!");
+                setLoading(false);
+                return;
             }
-        };
 
+            const response = await axios.get(`${DOMAIN}/api/students/me`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            setProfile(response.data);
+        } catch (err) {
+            console.error("Lỗi tải thông tin:", err);
+            setError("Không thể tải thông tin cá nhân.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchProfile();
     }, []);
 
-    // 3. Hiển thị khi đang tải hoặc lỗi
+    // 3. Hàm xử lý chọn file và tự động upload ngay lập tức
+    const handleFileChange = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Hiện ảnh xem trước ngay lập tức
+        setPreviewImage(URL.createObjectURL(file));
+
+        // Chuẩn bị form data
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const token = localStorage.getItem("token");
+            await axios.post(`${DOMAIN}/api/students/avatar`, formData, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+
+            alert("Cập nhật ảnh đại diện thành công!");
+            // Gọi lại API để cập nhật dữ liệu gốc từ Server
+            fetchProfile();
+
+        } catch (err) {
+            console.error("Lỗi upload:", err);
+            alert("Lỗi khi cập nhật ảnh đại diện!");
+        }
+    };
+
+    // 4. Render giao diện
     if (loading) return <div className="text-center mt-5">Loading...</div>;
     if (error) return <div className="text-center mt-5 text-danger">{error}</div>;
     if (!profile) return null;
+
+    // Logic chọn nguồn ảnh: Preview (ưu tiên) -> Ảnh từ DB -> Ảnh mặc định
+    const defaultAvatar = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
+    const avatarSrc = previewImage || (profile.avatar ? `${DOMAIN}${profile.avatar}` : defaultAvatar);
 
     return (
         <div className="container mt-4">
             <div className="card shadow p-4">
                 <h3 className="text-primary mb-4 text-center">👤 Hồ Sơ Sinh Viên</h3>
                 <div className="row">
-                    {/* Cột trái: Avatar */}
+                    {/* --- CỘT TRÁI: AVATAR & UPLOAD --- */}
                     <div className="col-md-4 text-center border-end">
-                        <img 
-                            src={profile.avatar || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
-                            alt="Avatar" 
-                            className="img-thumbnail rounded-circle mb-3"
-                            style={{ width: "180px", height: "180px", objectFit:"cover" }}
-                        />
-                        <h4 className="mt-2">{profile.fullName}</h4>
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                            <img 
+                                src={avatarSrc} 
+                                alt="Avatar" 
+                                className="img-thumbnail rounded-circle mb-3"
+                                style={{ width: "180px", height: "180px", objectFit: "cover", cursor: "pointer" }}
+                                // Khi click vào ảnh thì kích hoạt input file
+                                onClick={() => document.getElementById('fileInput').click()}
+                            />
+                            
+                            {/* Input file bị ẩn đi */}
+                            <input 
+                                id="fileInput" 
+                                type="file" 
+                                style={{ display: "none" }} 
+                                onChange={handleFileChange} 
+                                accept="image/*"
+                            />
+
+                            {/* Nút bấm nhỏ gợi ý đổi ảnh */}
+                            <div 
+                                className="mt-1 text-primary" 
+                                style={{ cursor: "pointer", fontSize: "0.9rem", fontWeight: "bold" }}
+                                onClick={() => document.getElementById('fileInput').click()}
+                            >
+                                📸 Đổi ảnh đại diện
+                            </div>
+                        </div>
+
+                        <h4 className="mt-3">{profile.fullName}</h4>
                         <p className="text-muted">{profile.studentCode}</p>
-                        <button className="btn btn-warning mt-3 w-75">✏️ Chỉnh sửa hồ sơ</button>
+                        <button className="btn btn-warning mt-2 w-75">✏️ Chỉnh sửa hồ sơ</button>
                     </div>
 
-                    {/* Cột phải: Thông tin chi tiết */}
+                    {/* --- CỘT PHẢI: THÔNG TIN CHI TIẾT (Giữ nguyên code cũ) --- */}
                     <div className="col-md-8 px-4">
                         <h5 className="mb-3 text-secondary">Thông tin cơ bản</h5>
                         <hr />
