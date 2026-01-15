@@ -1,31 +1,42 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import axios from "axios"; // 1. Nhớ import axios để gọi API
 
 const StudentLayout = () => {
   const navigate = useNavigate();
-  // Khởi tạo tên mặc định là rỗng hoặc "Đang tải..."
-  const [student, setStudent] = useState({ fullName: "Nguyen Van A", avatar: null });
+  const DOMAIN = "http://localhost:8080";
 
-  // --- LẤY THÔNG TIN SINH VIÊN TỪ LOCAL STORAGE ---
+  // 2. Khởi tạo state (Mặc định hiển thị đang tải...)
+  const [student, setStudent] = useState({
+    fullName: "Đang tải...",
+    avatar: null,
+    studentCode: "" 
+  });
+
+  // 3. LẤY THÔNG TIN TỪ API (Để đồng bộ với Database)
   useEffect(() => {
-    const storedUser = localStorage.getItem("user"); // Key này phải khớp với lúc bạn Login lưu vào
-    // Ví dụ lúc login bạn lưu: localStorage.setItem("user", JSON.stringify(data.user));
-    
-    if (storedUser) {
-        try {
-            const userObj = JSON.parse(storedUser);
-            setStudent({
-                // Ưu tiên lấy fullName, nếu không có thì lấy username, không có nữa thì hiện mặc định
-                fullName: userObj.fullName || userObj.username || "Sinh viên",
-                avatar: userObj.avatar // URL ảnh
+    const fetchStudentData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        
+        if (token) {
+            // Gọi API /me để lấy thông tin mới nhất (Avatar, Tên...)
+            const response = await axios.get(`${DOMAIN}/api/students/me`, {
+                headers: { Authorization: `Bearer ${token}` }
             });
-        } catch (e) {
-            console.error("Lỗi đọc dữ liệu user", e);
+            setStudent(response.data);
         }
-    }
+      } catch (e) {
+        console.error("Lỗi tải thông tin sidebar:", e);
+        // Nếu lỗi thì để tên mặc định
+        setStudent(prev => ({ ...prev, fullName: "Sinh viên" }));
+      }
+    };
+
+    fetchStudentData();
   }, []);
 
-  // --- STYLES ---
+  // --- STYLES (Giữ nguyên như cũ) ---
   const linkStyle = ({ isActive }) => ({
     display: "block",
     padding: "10px 12px",
@@ -47,7 +58,6 @@ const StudentLayout = () => {
     display: "flex", alignItems: "center", gap: "10px"
   };
 
-  // Style Profile ở đáy
   const profileStyle = {
     marginTop: "auto", 
     paddingTop: "15px",
@@ -59,6 +69,10 @@ const StudentLayout = () => {
     borderRadius: "8px",
     transition: "background 0.2s"
   };
+
+  // Logic hiển thị Avatar
+  const defaultAvatar = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
+  const avatarSrc = student.avatar || defaultAvatar;
 
   return (
     <div style={{ display: "flex", height: "100vh" }}>
@@ -76,7 +90,7 @@ const StudentLayout = () => {
         <h3 className="mb-4 fw-bold text-center">For Students</h3>
 
         <div style={{ flex: 1 }}>
-            {/* CÁC MỤC THỦ TỤC (Tĩnh) */}
+            {/* CÁC MỤC THỦ TỤC */}
             <small style={{ textTransform: "uppercase", opacity: 0.8, marginBottom: 10, display:"block", fontWeight: "bold", fontSize: "12px", color: "#a8e6cf" }}>
                 Góc làm danh mục thủ tục
             </small>
@@ -88,7 +102,7 @@ const StudentLayout = () => {
 
             <hr style={{ borderColor: "rgba(255,255,255,0.4)", margin: "10px 0 20px 0" }} />
             
-            {/* CÁC MỤC TƯ VẤN (Động) */}
+            {/* CÁC MỤC TƯ VẤN */}
             <small style={{ textTransform: "uppercase", opacity: 0.8, marginBottom: 10, display:"block", fontWeight: "bold", fontSize: "12px", color: "#a8e6cf" }}>
                 Góc tư vấn & Hỗ trợ
             </small>
@@ -102,16 +116,17 @@ const StudentLayout = () => {
             </NavLink>
         </div>
 
-        {/* --- USER PROFILE (ĐÚNG YÊU CẦU CỦA BẠN) --- */}
+        {/* --- USER PROFILE (ĐÃ SỬA DỮ LIỆU ĐỘNG) --- */}
         <div 
             style={profileStyle} 
             onClick={() => navigate("/student/profile")}
             onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
             onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+            title="Bấm để xem hồ sơ chi tiết"
         >
-            {/* AVATAR */}
+            {/* AVATAR: Lấy từ state student.avatar */}
             <img 
-                src={student.avatar || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
+                src={avatarSrc} 
                 alt="Avatar" 
                 style={{ 
                     width: "40px", height: "40px", 
@@ -122,14 +137,14 @@ const StudentLayout = () => {
             
             <div style={{ overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center" }}>
                 
-                {/* DÒNG TRÊN: TÊN SINH VIÊN (IN ĐẬM) */}
+                {/* TÊN SINH VIÊN: Lấy từ state student.fullName */}
                 <div style={{ fontWeight: "bold", fontSize: "14px", lineHeight: "1.2", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {student.fullName}
                 </div>
                 
-                {/* DÒNG DƯỚI: ROLE (CHỮ NHỎ) */}
+                {/* MÃ SINH VIÊN: Lấy từ state student.studentCode */}
                 <div style={{ fontSize: "12px", opacity: 0.8, marginTop: "2px" }}>
-                    Sinh viên
+                    {student.studentCode || "Sinh viên"}
                 </div>
 
             </div>
