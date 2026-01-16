@@ -12,6 +12,7 @@ import LecturerDashboard from "./pages/lecturer/LecturerDashboard";
 import LecturerProfile from "./pages/lecturer/LecturerProfile";
 import StudentProfile from "./pages/student/StudentProfile";
 import ForgotPassword from "./components/ForgotPassword";
+import LecturerDetail from "./pages/lecturer/LecturerDetail";
 
 
 function App() {
@@ -39,6 +40,8 @@ function App() {
           <Route index element={<Navigate to="create-request" replace />} />
           {/* 👇 THÊM ROUTE PROFILE */}
           <Route path="profile" element={<StudentProfile />} />
+          <Route path="lecturer-info/:id" element={<LecturerDetail />} />
+           
           
         </Route>
 
@@ -49,6 +52,7 @@ function App() {
           <Route path="dashboard" element={<LecturerDashboard />} />
           <Route path="appointments" element={<LecturerAppointments />} />
            <Route path="profile" element={<LecturerProfile />} />
+          
         </Route>
       </Routes>
     </BrowserRouter>
