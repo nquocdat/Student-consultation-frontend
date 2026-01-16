@@ -12,6 +12,7 @@ const ConsultationHistory = () => {
         })
         .then(res => res.json())
         .then(data => {
+            // Sắp xếp ID giảm dần (mới nhất lên đầu)
             const sorted = data.sort((a, b) => b.id - a.id);
             setAppointments(sorted);
         })
@@ -21,6 +22,8 @@ const ConsultationHistory = () => {
     // Helper: Tính giờ kết thúc
     const getDurationDisplay = (startTime, endTime) => {
         if (endTime) return `${startTime} - ${endTime}`;
+        
+        // Fallback: Tự cộng 30 phút nếu không có endTime
         const [h, m] = startTime.split(':').map(Number);
         const date = new Date(); date.setHours(h, m, 0, 0); 
         date.setMinutes(date.getMinutes() + 30);
@@ -75,18 +78,27 @@ const ConsultationHistory = () => {
         return <span className={`badge rounded-pill ${colorClass} px-3 py-2`}>{text}</span>;
     };
 
-    // --- (MỚI) HELPER HIỂN THỊ KẾT QUẢ ---
+   // --- HELPER HIỂN THỊ KẾT QUẢ (ĐÃ SỬA) ---
     const getResultDisplay = (resultCode, note) => {
         if (!resultCode) return <span className="text-muted small opacity-50">-</span>;
 
+        // Mặc định (nếu không khớp case nào thì hiện code gốc)
         let badge = <span className="badge bg-secondary">{resultCode}</span>;
 
-        // Map Enum chính xác theo Database của bạn
-        if (resultCode === 'SOLVED') badge = <span className="badge bg-success bg-opacity-75 text-white">✅ Đã giải quyết</span>;
-        else if (resultCode === 'UNSOLVED') badge = <span className="badge bg-warning text-dark border">⚠️ Cần theo dõi thêm</span>;
-        
-        // Database của bạn đang lưu là "STUDENT_ABSENT" 👇
-        else if (resultCode === 'STUDENT_ABSENT') badge = <span className="badge bg-danger">❌ Vắng mặt</span>;
+        // Map các trường hợp sang tiếng Việt
+        if (resultCode === 'SOLVED') {
+            badge = <span className="badge bg-success">✅ Đã giải quyết</span>;
+        } 
+        else if (resultCode === 'UNSOLVED') {
+            badge = <span className="badge bg-warning text-dark">⚠️ Cần theo dõi thêm</span>;
+        } 
+        else if (resultCode === 'STUDENT_ABSENT') {
+            badge = <span className="badge bg-danger">❌ Vắng mặt</span>;
+        } 
+        // 👇👇👇 THÊM ĐOẠN NÀY ĐỂ XỬ LÝ LỖI TRONG ẢNH CỦA BẠN 👇👇👇
+        else if (resultCode === 'CANCELLED_BY_GV') {
+            badge = <span className="badge bg-danger bg-opacity-75">⛔ Hủy bởi GV</span>;
+        }
 
         return (
             <div className="d-flex flex-column align-items-center">
@@ -127,7 +139,6 @@ const ConsultationHistory = () => {
                                 <th className="py-3" style={{width: "12%"}}>Khung giờ</th> 
                                 <th className="py-3" style={{width: "8%"}}>Hình thức</th>
                                 <th className="py-3" style={{width: "10%"}}>Trạng thái</th>
-                                {/* 👇 CỘT MỚI THÊM 👇 */}
                                 <th className="py-3" style={{width: "13%"}}>Kết quả</th>
                                 <th className="py-3 text-start" style={{width: "8%"}}>File</th>
                                 <th className="py-3" style={{width: "5%"}}>Hủy</th>
@@ -189,10 +200,9 @@ const ConsultationHistory = () => {
                                         {getStatusBadge(a.statusCode, a.statusDescription)}
                                     </td>
 
-                                    {/* 👇 HIỂN THỊ CỘT KẾT QUẢ MỚI 👇 */}
+                                    {/* 👇 ĐÃ SỬA LỖI Ở ĐÂY (dùng a.consultationResult) 👇 */}
                                     <td className="text-center">
-                                        {/* Giả sử Backend trả về field: result (enum) và feedbackNote (string) */}
-                                        {getResultDisplay(a.result, a.feedbackNote)}
+                                        {getResultDisplay(a.consultationResult, a.feedbackNote)}
                                     </td>
 
                                     <td className="text-start">
