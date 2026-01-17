@@ -45,6 +45,11 @@ const appointmentApi = {
     // giảng viên chủ động hủy
     cancelByLecturer(id) {
         return axiosClient.put(`/api/appointment/${id}/cancel/lecturer`);
+    },
+    // ✅ THÊM HÀM NÀY: Cập nhật kết quả (Hoàn thành / Vắng mặt)
+    updateResult(id, data) {
+        // data gồm: { consultationResult: "...", note: "..." }
+        return axiosClient.put(`/api/appointment/${id}/result`, data);
     }
 };
 
