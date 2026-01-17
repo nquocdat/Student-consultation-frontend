@@ -82,7 +82,6 @@ const ConsultationHistory = () => {
         if (!resultCode) return <span className="text-muted small opacity-50">-</span>;
 
         let badge = <span className="badge bg-secondary">{resultCode}</span>;
-
         if (resultCode === 'SOLVED') badge = <span className="badge bg-success bg-opacity-75 text-white">✅ Đã giải quyết</span>;
         else if (resultCode === 'UNSOLVED') badge = <span className="badge bg-warning text-dark border">⚠️ Cần theo dõi thêm</span>;
         else if (resultCode === 'STUDENT_ABSENT') badge = <span className="badge bg-danger">❌ Vắng mặt</span>;
@@ -91,11 +90,7 @@ const ConsultationHistory = () => {
         return (
             <div className="d-flex flex-column align-items-center">
                 {badge}
-                {note && (
-                    <div className="small text-muted fst-italic mt-1 text-truncate" style={{ maxWidth: "140px" }} title={note}>
-                        "{note}"
-                    </div>
-                )}
+                {/* Note kết quả (nếu cần) */}
             </div>
         );
     };
@@ -117,35 +112,27 @@ const ConsultationHistory = () => {
             {/* Card Bảng */}
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
                 <div className="table-responsive">
-                    <table className="table table-hover table-bordered align-middle mb-0" style={{ minWidth: "1250px" }}>
+                    <table className="table table-hover table-bordered align-middle mb-0" style={{ minWidth: "1400px" }}>
                         <thead className="bg-light text-secondary">
                             <tr className="text-uppercase small fw-bold text-center">
-                                {/* 1. STT */}
-                                <th className="py-3" style={{ width: "4%" }}>STT</th>
-                                {/* 2. Giảng viên */}
-                                <th className="py-3 text-start" style={{ width: "14%" }}>Giảng viên</th>
-                                {/* 3. Ngày hẹn */}
-                                <th className="py-3" style={{ width: "9%" }}>Ngày hẹn</th>
-                                {/* 4. Khung giờ */}
-                                <th className="py-3" style={{ width: "11%" }}>Khung giờ</th>
-                                {/* 5. Hình thức */}
-                                <th className="py-3" style={{ width: "8%" }}>Hình thức</th>
-                                {/* 6. File */}
-                                <th className="py-3 text-start" style={{ width: "8%" }}>File đính kèm</th>
-                                {/* 7. Chủ đề */}
-                                <th className="py-3 text-start" style={{ width: "18%" }}>Chủ đề / Nội dung</th>
-                                {/* 8. Trạng thái */}
-                                <th className="py-3" style={{ width: "10%" }}>Trạng thái</th>
-                                {/* 9. Kết quả (Mới thêm) */}
-                                <th className="py-3" style={{ width: "13%" }}>Kết quả</th>
-                                {/* 10. Hành động */}
-                                <th className="py-3" style={{ width: "5%" }}>Hành động</th>
+                                <th className="py-3" style={{ width: "3%" }}>STT</th>
+                                <th className="py-3 text-start" style={{ width: "12%" }}>Giảng viên</th>
+                                <th className="py-3" style={{ width: "8%" }}>Ngày hẹn</th>
+                                <th className="py-3" style={{ width: "10%" }}>Khung giờ</th>
+                                <th className="py-3" style={{ width: "7%" }}>Hình thức</th>
+                                <th className="py-3 text-start" style={{ width: "7%" }}>File</th>
+                                <th className="py-3 text-start" style={{ width: "15%" }}>Chủ đề / Nội dung</th>
+                                {/* ✅ CỘT MỚI: Ghi chú / Lời nhắn từ GV */}
+                                <th className="py-3 text-start" style={{ width: "15%" }}>Ghi chú từ GV</th> 
+                                <th className="py-3" style={{ width: "9%" }}>Trạng thái</th>
+                                <th className="py-3" style={{ width: "10%" }}>Kết quả</th>
+                                <th className="py-3" style={{ width: "4%" }}>Tác vụ</th>
                             </tr>
                         </thead>
                         <tbody>
                             {appointments.length === 0 && (
                                 <tr>
-                                    <td colSpan={10} className="text-center py-5">
+                                    <td colSpan={11} className="text-center py-5">
                                         <div className="text-muted">
                                             <i className="bi bi-inbox fs-1 d-block mb-2"></i>
                                             Bạn chưa có yêu cầu tư vấn nào.
@@ -156,48 +143,30 @@ const ConsultationHistory = () => {
 
                             {appointments.map((a, i) => (
                                 <tr key={a.id} style={{ height: "65px" }}>
-                                    {/* 1. STT */}
                                     <td className="fw-bold text-muted text-center">{i + 1}</td>
 
-                                    {/* 2. Giảng viên */}
+                                    {/* Giảng viên */}
                                     <td className="text-start">
-                                        {a.lecturerId ? ( // Kiểm tra nếu có ID giảng viên mới cho bấm
+                                        {a.lecturerId ? (
                                             <div className="d-flex align-items-center">
                                                 <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0"
-                                                    style={{ width: "28px", height: "28px", fontSize: "11px" }}>
-                                                    GV
-                                                </div>
-
-                                                {/* 👇 BIẾN TÊN THÀNH LINK Ở ĐÂY 👇 */}
-                                                <Link
-                                                    to={`/student/lecturer-info/${a.lecturerId}`}
-                                                    className="fw-bold text-primary text-decoration-none text-truncate"
-                                                    style={{ maxWidth: "130px", cursor: "pointer" }}
-                                                    title="Xem thông tin giảng viên"
-                                                >
+                                                    style={{ width: "28px", height: "28px", fontSize: "11px" }}>GV</div>
+                                                <Link to={`/student/lecturer-info/${a.lecturerId}`} className="fw-bold text-primary text-decoration-none text-truncate"
+                                                    style={{ maxWidth: "130px", cursor: "pointer" }} title="Xem thông tin giảng viên">
                                                     {a.lecturerName}
                                                 </Link>
-                                                {/* 👆 -------------------------- 👆 */}
-
                                             </div>
-                                        ) : (
-                                            <span className="badge bg-light text-secondary border rounded-pill fw-normal">Đang xếp...</span>
-                                        )}
+                                        ) : <span className="badge bg-light text-secondary border rounded-pill fw-normal">Đang xếp...</span>}
                                     </td>
 
-                                    {/* 3. Ngày hẹn */}
-                                    <td className="text-center fw-medium text-secondary">
-                                        {a.date}
-                                    </td>
-
-                                    {/* 4. Khung giờ */}
+                                    <td className="text-center fw-medium text-secondary">{a.date}</td>
+                                    
                                     <td className="text-center">
                                         <span className="badge bg-light text-dark border px-2 py-1" style={{ fontSize: "0.85rem" }}>
                                             🕒 {getDurationDisplay(a.time, a.endTime)}
                                         </span>
                                     </td>
 
-                                    {/* 5. Hình thức */}
                                     <td className="text-center">
                                         {a.consultationType === "IN_PERSON"
                                             ? <span className="badge bg-info bg-opacity-10 text-info border border-info rounded-pill">🏢 Trực tiếp</span>
@@ -205,16 +174,13 @@ const ConsultationHistory = () => {
                                         }
                                     </td>
 
-                                    {/* 6. File */}
+                                    {/* File */}
                                     <td className="text-start">
                                         {a.attachments && a.attachments.length > 0 ? (
                                             <div className="d-flex flex-column gap-1">
                                                 {a.attachments.map(f => (
-                                                    <a key={f.id} href="#"
-                                                        className="btn btn-sm btn-outline-secondary d-flex align-items-center border-0 text-start px-0 py-0"
-                                                        onClick={(e) => { e.preventDefault(); handleDownload(f.id, f.fileName) }}
-                                                        title="Tải xuống"
-                                                    >
+                                                    <a key={f.id} href="#" className="btn btn-sm btn-outline-secondary d-flex align-items-center border-0 text-start px-0 py-0"
+                                                        onClick={(e) => { e.preventDefault(); handleDownload(f.id, f.fileName) }} title="Tải xuống">
                                                         <span className="me-1 text-primary">📎</span>
                                                         <span className="text-truncate" style={{ maxWidth: "80px", fontSize: "0.85rem" }}>{f.fileName}</span>
                                                     </a>
@@ -223,37 +189,32 @@ const ConsultationHistory = () => {
                                         ) : <span className="text-muted small opacity-50">-</span>}
                                     </td>
 
-                                    {/* 7. Chủ đề */}
+                                    {/* Chủ đề */}
                                     <td className="text-start">
-                                        <div className="fw-bold text-dark text-truncate" style={{ maxWidth: "250px" }} title={a.reason}>
+                                        <div className="fw-bold text-dark text-truncate-2" style={{ maxWidth: "200px", maxHeight: "3em", overflow: "hidden" }} title={a.reason}>
                                             {a.reason || "Không có tiêu đề"}
                                         </div>
                                     </td>
 
-                                    {/* 8. Trạng thái */}
-                                    <td className="text-center">
-                                        {getStatusBadge(a.statusCode, a.statusDescription)}
+                                    {/* ✅ CỘT MỚI: GHI CHÚ TỪ GV ✅ */}
+                                    <td className="text-start">
+                                        <div className="small text-muted fst-italic text-truncate-2" 
+                                             style={{ maxWidth: "200px", maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap" }} 
+                                             title={a.feedbackNote}>
+                                            {a.feedbackNote || <span className="opacity-50">--</span>}
+                                        </div>
                                     </td>
 
-                                    {/* 9. Kết quả (Cột riêng) */}
-                                    <td className="text-center">
-                                        {getResultDisplay(a.consultationResult, a.feedbackNote)}
-                                    </td>
+                                    <td className="text-center">{getStatusBadge(a.statusCode, a.statusDescription)}</td>
+                                    <td className="text-center">{getResultDisplay(a.consultationResult, null)}</td>
 
-                                    {/* 10. Hành động */}
                                     <td className="text-center">
                                         {a.statusCode === 'PENDING' ? (
-                                            <button
-                                                className="btn btn-outline-danger btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center mx-auto"
-                                                style={{ width: "28px", height: "28px", padding: 0 }}
-                                                title="Hủy yêu cầu"
-                                                onClick={() => cancelAppointment(a.id)}
-                                            >
+                                            <button className="btn btn-outline-danger btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center mx-auto"
+                                                style={{ width: "28px", height: "28px", padding: 0 }} title="Hủy yêu cầu" onClick={() => cancelAppointment(a.id)}>
                                                 ✕
                                             </button>
-                                        ) : (
-                                            <span className="text-muted opacity-25">--</span>
-                                        )}
+                                        ) : <span className="text-muted opacity-25">--</span>}
                                     </td>
                                 </tr>
                             ))}
