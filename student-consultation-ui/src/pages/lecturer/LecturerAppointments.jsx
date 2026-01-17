@@ -7,215 +7,283 @@ export default function LecturerAppointments() {
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // 🔍 STATES CHO TÌM KIẾM VÀ LỌC
+    // SEARCH & FILTER
     const [searchTerm, setSearchTerm] = useState("");
     const [filterDate, setFilterDate] = useState("");
 
-    // ... (Giữ nguyên logic downloadAttachment)
+    // ================= 1. HELPER FUNCTIONS (Đồng bộ với Sinh viên) =================
+    
+    // Tính giờ kết thúc (Start + 30p)
+    const getDurationDisplay = (startTime) => {
+        if (!startTime) return "-";
+        // Giả sử startTime dạng "08:00:00" hoặc "08:00"
+        const [h, m] = startTime.split(':').map(Number);
+        const date = new Date(); 
+        date.setHours(h, m, 0, 0);
+        date.setMinutes(date.getMinutes() + 30);
+        
+        const newH = date.getHours(); 
+        const newM = date.getMinutes();
+        const end = `${(newH < 10 ? '0' : '') + newH}:${(newM < 10 ? '0' : '') + newM}`;
+        
+        // Trả về dạng: 08:00 - 08:30
+        return `${startTime.slice(0, 5)} - ${end}`;
+    };
+
+    // Style Badge Trạng thái
+    const getStatusBadge = (code, text) => {
+        let colorClass = "bg-secondary";
+        if (code === 'APPROVED') colorClass = "bg-success";
+        if (code === 'PENDING') colorClass = "bg-warning text-dark"; // Chờ duyệt màu vàng
+        if (code === 'REJECTED') colorClass = "bg-danger";
+        if (code === 'COMPLETED') colorClass = "bg-primary";
+        if (code === 'CANCEL_REQUEST') colorClass = "bg-info text-dark"; // Yêu cầu hủy
+        if (code === 'CANCELED') colorClass = "bg-secondary";
+
+        return <span className={`badge rounded-pill ${colorClass} px-3 py-2 border border-light shadow-sm`}>{text}</span>;
+    };
+
+    // Hiển thị Kết quả
+    const getResultDisplay = (resultCode, note) => {
+        if (!resultCode) return <span className="text-muted small opacity-50">-</span>;
+
+        let badge = <span className="badge bg-secondary">{resultCode}</span>;
+        if (resultCode === 'SOLVED') badge = <span className="badge bg-success bg-opacity-75 text-white">✅ Đã giải quyết</span>;
+        else if (resultCode === 'UNSOLVED') badge = <span className="badge bg-warning text-dark border">⚠️ Cần theo dõi</span>;
+        else if (resultCode === 'STUDENT_ABSENT') badge = <span className="badge bg-danger">❌ Vắng mặt</span>;
+
+        return (
+            <div className="d-flex flex-column align-items-center">
+                {badge}
+                {/* Nút cập nhật kết quả nếu chưa xong (ví dụ) */}
+                {!resultCode && <span className="text-muted small">Chưa ghi</span>}
+            </div>
+        );
+    };
+
+    // ================= 2. LOGIC TẢI FILE & API =================
     const downloadAttachment = async (appointmentId, file) => {
         try {
-            let token = localStorage.getItem("token") || localStorage.getItem("accessToken");
-            if (!token) { alert("Lỗi token"); return; }
-            if (token.startsWith('"')) token = token.slice(1, -1);
-
+            const token = localStorage.getItem("token");
+            if (!token) return;
             const url = `http://localhost:8080/api/appointment/${file.id}/download`;
             const res = await axios.get(url, {
                 responseType: "blob",
                 headers: { Authorization: `Bearer ${token}` }
             });
-
             const blob = new Blob([res.data], { type: file.fileType || "application/octet-stream" });
             const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = downloadUrl;
-            a.download = file.fileName;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(downloadUrl);
-        } catch (err) {
-            console.error(err);
-            alert("Lỗi tải file");
-        }
+            const a = document.createElement("a"); a.href = downloadUrl; a.download = file.fileName;
+            document.body.appendChild(a); a.click(); a.remove();
+        } catch (err) { alert("Lỗi tải file"); }
     };
 
     const loadAppointments = async () => {
         try {
             setLoading(true);
             const res = await appointmentApi.getLecturerAppointments();
-            const sorted = res.data.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+            const sorted = res.data.sort((a, b) => 
+                new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`)
+            );
             setAppointments(sorted);
-        } catch (error) {
-            alert("Không lấy được lịch giảng viên");
-        } finally {
-            setLoading(false);
-        }
+        } catch (error) { console.error(error); } 
+        finally { setLoading(false); }
     };
 
     useEffect(() => { loadAppointments(); }, []);
 
-    // ... (Giữ nguyên các hàm actions: approve, reject...)
-    const approve = async (id) => { await appointmentApi.approve(id); loadAppointments(); };
-    const reject = async (id) => { await appointmentApi.reject(id); loadAppointments(); };
-    const approveCancel = async (id) => { await appointmentApi.approveCancel(id); loadAppointments(); };
-    const rejectCancel = async (id) => { await appointmentApi.rejectCancel(id); loadAppointments(); };
+    const handleAction = async (actionFn, id, confirmMsg) => {
+        if (window.confirm(confirmMsg)) {
+            await actionFn(id);
+            loadAppointments();
+        }
+    };
 
-    // 🔍 LOGIC LỌC DỮ LIỆU
-    // Kết hợp cả tìm kiếm từ khóa VÀ ngày
+    // ================= 3. FILTER LOGIC =================
     const filteredAppointments = appointments.filter(appt => {
-        // 1. Lọc theo từ khóa (Tên hoặc Email)
-        const matchSearch = 
-            appt.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            appt.studentEmail.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        // 2. Lọc theo ngày (Nếu có chọn ngày thì so sánh, không thì lấy hết)
+        const term = searchTerm.toLowerCase();
+        const matchSearch =
+            (appt.studentName?.toLowerCase() || "").includes(term) ||
+            (appt.studentCode?.toLowerCase() || "").includes(term) ||
+            (appt.studentEmail?.toLowerCase() || "").includes(term);
         const matchDate = filterDate ? appt.date === filterDate : true;
-
         return matchSearch && matchDate;
     });
 
-    // ====== UI COLORS ======
-    const renderStatus = (code, text) => {
-        const statusColor = { PENDING: "bg-warning text-dark", APPROVED: "bg-success", CANCEL_REQUEST: "bg-info text-dark", CANCELED: "bg-secondary", REJECTED: "bg-danger", COMPLETED: "bg-dark" };
-        return <span className={`badge py-2 ${statusColor[code]}`} style={{ width: "130px", display: "inline-block", textAlign: "center" }}>{text}</span>;
-    };
-
-    // 🎨 MÀU ĐỐI LẬP CHO HÌNH THỨC TƯ VẤN
-    const renderConsultationType = (type) => {
-        if (type === "IN_PERSON") {
-            // Màu Xanh Dương đậm
-            return <span className="badge bg-primary" style={{ minWidth: "90px" }}>Trực tiếp</span>;
-        }
-        if (type === "PHONE") {
-            // Màu Vàng Cam (đối lập với xanh) - text-dark để chữ dễ đọc
-            return <span className="badge bg-warning text-dark" style={{ minWidth: "90px" }}>Điện thoại</span>;
-        }
-        return <span className="text-muted">—</span>;
-    };
-
-    if (loading) return <p className="text-center mt-5">⏳ Đang tải dữ liệu...</p>;
+    if (loading) return <div className="d-flex justify-content-center align-items-center vh-100"><div className="spinner-border text-primary"></div></div>;
 
     return (
-        // 1️⃣ SỬ DỤNG container-fluid ĐỂ FULL MÀN HÌNH
-        <div className="container-fluid mt-3 px-3">
+        <div className="container-fluid px-4 mt-4 font-monospace">
             
-            <div className="d-flex justify-content-between align-items-center mb-3">
-                <h3 className="m-0 text-primary fw-bold">📅 Quản lý lịch hẹn</h3>
-                
-                {/* 🔍 THANH TÌM KIẾM & LỌC */}
+            {/* HEADER & FILTER */}
+            <div className="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+                <div>
+                    <h3 className="fw-bold text-primary mb-1">📅 Quản Lý Lịch Hẹn</h3>
+                    <p className="text-muted mb-0">Danh sách yêu cầu tư vấn từ sinh viên</p>
+                </div>
+
                 <div className="d-flex gap-2">
-                    {/* Ô nhập từ khóa */}
-                    <div className="input-group" style={{ width: "300px" }}>
-                        <span className="input-group-text bg-white">🔍</span>
+                    <div className="input-group shadow-sm" style={{maxWidth: "250px"}}>
+                        <span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span>
                         <input 
-                            type="text" 
-                            className="form-control" 
-                            placeholder="Tìm tên hoặc email..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            type="text" className="form-control border-start-0 ps-0" placeholder="Tên, MSSV..." 
+                            value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                         />
                     </div>
-
-                    {/* Ô chọn ngày */}
                     <input 
-                        type="date" 
-                        className="form-control" 
-                        style={{ width: "180px" }}
-                        value={filterDate}
-                        onChange={(e) => setFilterDate(e.target.value)}
+                        type="date" className="form-control shadow-sm" style={{maxWidth: "150px"}}
+                        value={filterDate} onChange={e => setFilterDate(e.target.value)}
                     />
-                    
-                    {/* Nút xóa lọc (chỉ hiện khi đang lọc) */}
-                    {(searchTerm || filterDate) && (
-                        <button 
-                            className="btn btn-outline-secondary"
-                            onClick={() => { setSearchTerm(""); setFilterDate(""); }}
-                        >
-                            Xóa lọc
-                        </button>
-                    )}
+                    <button className="btn btn-light shadow-sm text-primary border" onClick={loadAppointments} title="Làm mới">
+                        🔄
+                    </button>
                 </div>
             </div>
 
-            <div className="table-responsive" style={{ minHeight: "80vh" }}>
-                <table className="table table-bordered align-middle table-hover shadow-sm" style={{ tableLayout: "fixed" }}>
-                    <thead className="table-primary text-center align-middle">
-                        <tr>
-                            <th style={{ width: "8%" }}>Ngày</th>
-                            <th style={{ width: "6%" }}>Giờ</th>
-                            <th style={{ width: "12%" }}>Sinh viên</th>
-                            <th style={{ width: "15%" }}>Email</th>
-                            <th style={{ width: "9%" }}>SĐT</th>
-                            <th style={{ width: "15%" }}>Lý do</th> {/* Cột lý do */}
-                            <th style={{ width: "8%" }}>Hình thức</th>
-                            <th style={{ width: "7%" }}>File</th>
-                            <th style={{ width: "10%" }}>Trạng thái</th>
-                            <th style={{ width: "10%" }}>Hành động</th>
-                        </tr>
-                    </thead>
-
-                    <tbody className="bg-white">
-                        {filteredAppointments.length === 0 && (
-                            <tr>
-                                <td colSpan="10" className="text-center py-4 text-muted">
-                                    {appointments.length === 0 ? "Chưa có lịch hẹn nào." : "Không tìm thấy kết quả phù hợp."}
-                                </td>
+            {/* CARD BẢNG DỮ LIỆU */}
+            <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div className="table-responsive">
+                    <table className="table table-hover table-bordered align-middle mb-0" style={{ minWidth: "1350px" }}>
+                        
+                        {/* THEAD: Đồng bộ với style của sinh viên (Sáng, chữ Xám đậm, Uppercase) */}
+                        <thead className="bg-light text-secondary">
+                            <tr className="text-uppercase small fw-bold text-center">
+                                <th className="py-3" style={{ width: "4%" }}>STT</th>
+                                <th className="py-3 text-start" style={{ width: "15%" }}>Sinh viên</th>
+                                <th className="py-3" style={{ width: "9%" }}>Ngày</th>
+                                <th className="py-3" style={{ width: "11%" }}>Khung giờ</th>
+                                <th className="py-3" style={{ width: "8%" }}>Hình thức</th>
+                                <th className="py-3" style={{ width: "8%" }}>File</th>
+                                <th className="py-3 text-start" style={{ width: "18%" }}>Lý do tư vấn</th>
+                                <th className="py-3" style={{ width: "10%" }}>Trạng thái</th>
+                                <th className="py-3" style={{ width: "10%" }}>Kết quả</th>
+                                <th className="py-3" style={{ width: "7%" }}>Tác vụ</th>
                             </tr>
-                        )}
+                        </thead>
 
-                        {filteredAppointments.map(appt => (
-                            <tr key={appt.id}>
-                                <td className="text-center">{appt.date}</td>
-                                <td className="text-center fw-bold text-primary">{appt.time?.slice(0, 5)}</td>
-                                <td className="text-truncate fw-bold" title={appt.studentName}>{appt.studentName}</td>
-                                <td className="text-truncate" title={appt.studentEmail}>{appt.studentEmail}</td>
-                                <td className="text-center">{appt.studentPhone}</td>
-                                
-                                {/* Lý do */}
-                                <td className="text-truncate" title={appt.reason}>
-                                    {appt.reason || <span className="text-muted small">Checking...</span>}
-                                </td>
+                        <tbody>
+                            {filteredAppointments.length === 0 ? (
+                                <tr><td colSpan={10} className="text-center py-5 text-muted">Không tìm thấy dữ liệu phù hợp.</td></tr>
+                            ) : (
+                                filteredAppointments.map((appt, i) => (
+                                    <tr key={appt.id}>
+                                        {/* 1. STT */}
+                                        <td className="text-center fw-bold text-muted">{i + 1}</td>
 
-                                <td className="text-center">
-                                    {renderConsultationType(appt.consultationType)}
-                                </td>
-
-                                <td className="text-center">
-                                    {appt.attachments?.length > 0 ? (
-                                        appt.attachments.map(f => (
-                                            <div key={f.id}>
-                                                <button className="btn btn-link p-0 small text-decoration-none" onClick={() => downloadAttachment(appt.id, f)}>
-                                                    📎 {f.fileName.length > 10 ? f.fileName.substring(0,8)+"..." : f.fileName}
-                                                </button>
+                                        {/* 2. Sinh viên (Gộp Tên + MSSV + Email cho gọn) */}
+                                        <td className="text-start">
+                                            <div className="fw-bold text-primary">{appt.studentName}</div>
+                                            <div className="d-flex align-items-center gap-2 small text-muted mt-1">
+                                                <span className="badge bg-light text-dark border">{appt.studentCode || "---"}</span>
                                             </div>
-                                        ))
-                                    ) : <span className="text-muted small">—</span>}
-                                </td>
+                                            <div className="small text-muted fst-italic mt-1" style={{fontSize: "0.8rem"}}>
+                                                {appt.studentEmail}
+                                            </div>
+                                        </td>
 
-                                <td className="text-center">
-                                    {renderStatus(appt.statusCode, appt.statusDescription)}
-                                </td>
+                                        {/* 3. Ngày */}
+                                        <td className="text-center fw-medium">{appt.date}</td>
 
-                                <td className="text-center">
-                                    <div className="d-flex flex-column gap-1">
-                                        {appt.statusCode === "PENDING" && (
-                                            <>
-                                                <button className="btn btn-success btn-sm w-100" onClick={() => approve(appt.id)}>Duyệt</button>
-                                                <button className="btn btn-danger btn-sm w-100" onClick={() => reject(appt.id)}>Từ chối</button>
-                                            </>
-                                        )}
-                                        {appt.statusCode === "CANCEL_REQUEST" && (
-                                            <>
-                                                <button className="btn btn-warning btn-sm w-100" onClick={() => approveCancel(appt.id)}>Duyệt hủy</button>
-                                                <button className="btn btn-secondary btn-sm w-100" onClick={() => rejectCancel(appt.id)}>Từ chối</button>
-                                            </>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                                        {/* 4. Khung giờ (Dùng hàm helper tính +30p) */}
+                                        <td className="text-center">
+                                            <span className="badge bg-white text-dark border px-2 py-1 shadow-sm font-monospace">
+                                                🕒 {getDurationDisplay(appt.time)}
+                                            </span>
+                                        </td>
+
+                                        {/* 5. Hình thức */}
+                                        <td className="text-center">
+                                            {appt.consultationType === "IN_PERSON"
+                                                ? <span className="badge bg-info bg-opacity-10 text-info border border-info rounded-pill">🏢 Trực tiếp</span>
+                                                : <span className="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill">💻 Online</span>
+                                            }
+                                        </td>
+
+                                        {/* 6. File */}
+                                        <td className="text-center">
+                                            {appt.attachments?.length > 0 ? (
+                                                <div className="d-flex flex-column gap-1 align-items-center">
+                                                    {appt.attachments.map(f => (
+                                                        <button 
+                                                            key={f.id}
+                                                            className="btn btn-sm btn-outline-secondary border-0 py-0 px-1 d-flex align-items-center"
+                                                            onClick={() => downloadAttachment(appt.id, f)}
+                                                            title={f.fileName}
+                                                        >
+                                                            <span className="me-1 text-danger">📎</span> 
+                                                            <span className="text-truncate" style={{maxWidth: "60px", fontSize: "0.8rem"}}>File</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ) : <span className="text-muted small opacity-50">-</span>}
+                                        </td>
+
+                                        {/* 7. Lý do */}
+                                        <td className="text-start">
+                                            <div className="text-truncate-2" style={{maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap", fontSize: "0.9rem"}} title={appt.reason}>
+                                                {appt.reason || "Không có nội dung"}
+                                            </div>
+                                        </td>
+
+                                        {/* 8. Trạng thái (Dùng helper) */}
+                                        <td className="text-center">
+                                            {getStatusBadge(appt.statusCode, appt.statusDescription)}
+                                        </td>
+
+                                        {/* 9. Kết quả (Dùng helper) */}
+                                        <td className="text-center">
+                                            {getResultDisplay(appt.consultationResult, appt.feedbackNote)}
+                                        </td>
+
+                                        {/* 10. Tác vụ (Nút tròn nhỏ) */}
+                                        <td className="text-center">
+                                            {/* PENDING: Duyệt / Từ chối */}
+                                            {appt.statusCode === "PENDING" && (
+                                                <div className="d-flex justify-content-center gap-2">
+                                                    <button className="btn btn-success btn-sm rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center" 
+                                                        style={{width: "30px", height: "30px"}}
+                                                        onClick={() => handleAction(appointmentApi.approve, appt.id, "Duyệt lịch hẹn này?")} title="Duyệt">
+                                                        <i className="bi bi-check-lg"></i>
+                                                    </button>
+                                                    <button className="btn btn-danger btn-sm rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center" 
+                                                        style={{width: "30px", height: "30px"}}
+                                                        onClick={() => handleAction(appointmentApi.reject, appt.id, "Từ chối lịch hẹn này?")} title="Từ chối">
+                                                        <i className="bi bi-x-lg"></i>
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* CANCEL_REQUEST: Đồng ý hủy / Giữ lại */}
+                                            {appt.statusCode === "CANCEL_REQUEST" && (
+                                                <div className="d-flex justify-content-center gap-2">
+                                                    <button className="btn btn-warning btn-sm rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center text-dark" 
+                                                        style={{width: "30px", height: "30px"}}
+                                                        onClick={() => handleAction(appointmentApi.approveCancel, appt.id, "Chấp nhận yêu cầu hủy?")} title="Đồng ý hủy">
+                                                        <i className="bi bi-check-lg"></i>
+                                                    </button>
+                                                    <button className="btn btn-secondary btn-sm rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center" 
+                                                        style={{width: "30px", height: "30px"}}
+                                                        onClick={() => handleAction(appointmentApi.rejectCancel, appt.id, "Từ chối yêu cầu hủy?")} title="Không hủy">
+                                                        <i className="bi bi-arrow-return-left"></i>
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Đã khóa */}
+                                            {["APPROVED", "COMPLETED", "REJECTED", "CANCELED"].includes(appt.statusCode) && (
+                                                <span className="text-muted opacity-25"><i className="bi bi-lock-fill"></i></span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div className="text-center mt-3 text-muted small">
+                Hiển thị {filteredAppointments.length} bản ghi gần nhất.
             </div>
         </div>
     );

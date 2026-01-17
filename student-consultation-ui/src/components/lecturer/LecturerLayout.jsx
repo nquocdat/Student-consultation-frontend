@@ -1,31 +1,52 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import LecturerHeader from "./LecturerHeader";
 import { useState, useEffect } from "react";
+import axios from "axios"; // 👈 Nhớ import axios
 
 export default function LecturerLayout() {
     const navigate = useNavigate();
 
-    // Giả lập lấy thông tin từ localStorage (hoặc bạn thay bằng Context/API)
+    // State lưu thông tin user
     const [user, setUser] = useState({
         name: "Đang tải...",
         avatar: "",
         role: "Giảng viên"
     });
 
+    // 👇 ĐOẠN LOGIC MỚI: GỌI API LẤY THÔNG TIN THẬT 👇
     useEffect(() => {
-        // Lấy thông tin thật từ localStorage (nếu bạn có lưu khi login)
-        const storedName = localStorage.getItem("fullName"); 
-        // const storedAvatar = localStorage.getItem("avatar"); 
-        
-        setUser({
-            name: storedName || "Nguyễn Văn Giảng Viên", // Fallback nếu chưa có tên
-            avatar: "https://i.pravatar.cc/150?img=11", // Ảnh giả lập
-            role: "Giảng viên khoa CNTT"
-        });
-    }, []);
+        const fetchUserInfo = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                if (!token) return;
+
+                // Gọi API /me để lấy thông tin mới nhất
+                const response = await axios.get("http://localhost:8080/api/lecturers/me", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                const data = response.data;
+                
+                setUser({
+                    name: data.fullName || "Giảng viên",
+                    // Nếu chưa có avatar thì dùng ảnh mặc định
+                    avatar: data.avatar || "https://cdn-icons-png.flaticon.com/512/3429/3429522.png",
+                    // Hiển thị khoa nếu có
+                    role: data.department ? `Khoa ${data.department}` : "Giảng viên"
+                });
+
+            } catch (error) {
+                console.error("Lỗi tải thông tin sidebar:", error);
+                // Nếu lỗi token hết hạn hoặc lỗi mạng, có thể để mặc định hoặc logout tùy ý
+            }
+        };
+
+        fetchUserInfo();
+    }, []); 
+    // 👆 KẾT THÚC LOGIC MỚI 👆
 
     const handleLogout = (e) => {
-        e.stopPropagation(); // Ngăn không cho click lan ra ngoài (để không bị nhảy trang profile)
+        e.stopPropagation(); 
         const confirm = window.confirm("Đăng xuất khỏi hệ thống?");
         if (confirm) {
             localStorage.clear();
@@ -59,7 +80,7 @@ export default function LecturerLayout() {
 
                 <hr className="border-secondary opacity-50 mx-3" />
 
-                {/* 2. Menu Items (Cuộn được nếu dài) */}
+                {/* 2. Menu Items */}
                 <div className="flex-grow-1 overflow-auto px-3 custom-scrollbar">
                     <small className="text-uppercase text-secondary fw-bold mb-2 d-block" style={{fontSize: "0.7rem"}}>Menu Chính</small>
                     
@@ -80,17 +101,18 @@ export default function LecturerLayout() {
                     </NavLink>
                 </div>
 
-                {/* 3. USER PROFILE (Ở DƯỚI CÙNG) - Phần bạn yêu cầu */}
+                {/* 3. USER PROFILE (DỮ LIỆU THẬT) */}
                 <div className="mt-auto p-3 border-top border-secondary border-opacity-25 bg-black bg-opacity-25">
                     <div 
                         className="d-flex align-items-center gap-3 p-2 rounded cursor-pointer hover-bg-light-opacity position-relative group-user"
                         style={{ cursor: "pointer", transition: "0.2s" }}
-                        onClick={() => navigate("/lecturer/profile")} // Bấm vào thì ra trang Profile
+                        onClick={() => navigate("/lecturer/profile")}
                         title="Xem thông tin cá nhân"
                     >
                         {/* Avatar */}
                         <img 
-                            src={user.avatar} 
+                            // Nếu avatar rỗng thì dùng ảnh mặc định
+                            src={user.avatar || "https://cdn-icons-png.flaticon.com/512/3429/3429522.png"} 
                             alt="User" 
                             className="rounded-circle border border-2 border-warning object-fit-cover"
                             width={45} 
@@ -107,15 +129,13 @@ export default function LecturerLayout() {
                             </small>
                         </div>
 
-                        {/* Nút Đăng xuất nhỏ (Icon) */}
+                        {/* Nút Đăng xuất */}
                         <button 
                             onClick={handleLogout}
                             className="btn btn-link text-danger p-0 ms-1 opacity-75 hover-opacity-100"
                             title="Đăng xuất"
                         >
-                            <i className="bi bi-box-arrow-right fs-5"></i> {/* Cần Bootstrap Icons */}
-                            {/* Nếu chưa cài icon thì dùng tạm text: */}
-                            {/* <span className="fs-4">🚪</span> */}
+                            <i className="bi bi-box-arrow-right fs-5"></i>
                         </button>
                     </div>
                 </div>
@@ -123,13 +143,14 @@ export default function LecturerLayout() {
 
             {/* === CONTENT AREA === */}
             <div className="flex-grow-1 d-flex flex-column bg-light" style={{ minWidth: 0 }}>
-                {/* Header giờ sẽ đơn giản hơn vì User info đã ở dưới Sidebar */}
+                {/* Header */}
                 <div style={{ position: "relative", zIndex: 100 }}>
                     <LecturerHeader simpleMode={true} /> 
                 </div>
 
+                {/* Main Content (Đã xóa maxWidth để full màn hình như bạn yêu cầu ở bài trước) */}
                 <div className="p-4 flex-grow-1 overflow-auto">
-                    <div className="container-fluid" style={{maxWidth: "1200px"}}>
+                    <div className="container-fluid h-100 p-0"> 
                         <Outlet />
                     </div>
                 </div>
