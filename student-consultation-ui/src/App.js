@@ -13,6 +13,7 @@ import LecturerProfile from "./pages/lecturer/LecturerProfile";
 import StudentProfile from "./pages/student/StudentProfile";
 import ForgotPassword from "./components/ForgotPassword";
 import LecturerDetail from "./pages/lecturer/LecturerDetail";
+import LecturerSchedule from "./pages/lecturer/LecturerSchedule";
 
 
 function App() {
@@ -52,6 +53,7 @@ function App() {
           <Route path="dashboard" element={<LecturerDashboard />} />
           <Route path="appointments" element={<LecturerAppointments />} />
            <Route path="profile" element={<LecturerProfile />} />
+           <Route path="schedule" element={<LecturerSchedule />} />
           
         </Route>
       </Routes>

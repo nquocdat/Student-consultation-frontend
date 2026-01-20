@@ -93,7 +93,7 @@ export default function LecturerLayout() {
                     </NavLink>
 
                     <NavLink to="/lecturer/schedule" className={getNavLinkClass}>
-                        <span>🕒</span> Đăng ký lịch rảnh
+                        <span>🕒</span> Đăng ký lịch làm việc
                     </NavLink>
 
                     <NavLink to="/lecturer/history" className={getNavLinkClass}>
