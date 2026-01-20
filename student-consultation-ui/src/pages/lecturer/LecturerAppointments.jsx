@@ -129,7 +129,7 @@ export default function LecturerAppointments() {
 
             // Nếu giảng viên có nhập link, ta ghép vào câu văn mẫu
             if (userInput && userInput.trim() !== "") {
-                messageToSend = `Đã duyệt. Link Google Meet: ${userInput} cũng đã được gửi đến email của bạn.`;
+                messageToSend = `Link Google Meet: ${userInput} để tham gia cuộc tư vấn.`;
             }
         }
 
