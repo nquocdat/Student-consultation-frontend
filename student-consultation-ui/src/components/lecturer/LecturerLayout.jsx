@@ -67,7 +67,7 @@ export default function LecturerLayout() {
             {/* === SIDEBAR === */}
             <div 
                 className="bg-dark text-white d-flex flex-column shadow-lg" 
-                style={{ width: 280, height: "100%", transition: "all 0.3s" }}
+                style={{ width: 240, height: "100%", transition: "all 0.3s" }}
             >
                 {/* 1. Logo Khu vực */}
                 <div className="p-4 pb-2">
