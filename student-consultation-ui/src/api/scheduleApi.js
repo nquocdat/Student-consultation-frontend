@@ -40,6 +40,16 @@ const scheduleApi = {
         return axiosClient.get("/api/schedule/valid-times", {
             params: { lecturerId, date, duration }
         });
+    },
+    // API Cập nhật (Sửa)
+    update(id, data) {
+        return axiosClient.put(`/api/schedule/${id}`, data);
+    },
+
+    // API Lấy slot thực tế còn trống (đã trừ appointment)
+    // Backend cần viết endpoint này, logic giống hệt cái getAvailableSlots cho sinh viên
+    getMyFreeSlots(fromDate) {
+        return axiosClient.get(`/api/schedule/lecturer/my-free-slots?from=${fromDate}`);
     }
 };
 

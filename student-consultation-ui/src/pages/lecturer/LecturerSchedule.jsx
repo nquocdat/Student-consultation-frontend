@@ -13,20 +13,25 @@ export default function LecturerSchedule() {
     const [formData, setFormData] = useState({ date: "", startTime: "", endTime: "" });
     const [overlapError, setOverlapError] = useState("");
 
-    // FORM HÀNH CHÍNH (MỚI)
+    // FORM HÀNH CHÍNH (Đăng ký nhanh)
     const [batchForm, setBatchForm] = useState({
         fromDate: "",
         toDate: "",
-        isMorning: true,   // Mặc định chọn sáng
-        isAfternoon: true  // Mặc định chọn chiều
+        isMorning: true,
+        isAfternoon: true
     });
 
-    // 1. Load dữ liệu
+    // 1. Load dữ liệu (Lấy danh sách lịch gốc)
     const loadSchedules = async () => {
         try {
             setLoading(true);
             const res = await scheduleApi.getMySchedules();
-            const sorted = res.data.sort((a, b) => new Date(b.date) - new Date(a.date));
+            // Sắp xếp: Ngày mới nhất lên đầu, trong ngày thì giờ sớm lên đầu
+            const sorted = res.data.sort((a, b) => {
+                const dateCompare = new Date(b.date) - new Date(a.date);
+                if (dateCompare !== 0) return dateCompare;
+                return a.startTime.localeCompare(b.startTime);
+            });
             setSchedules(sorted);
         } catch (error) {
             console.error("Lỗi tải lịch:", error);
@@ -37,14 +42,15 @@ export default function LecturerSchedule() {
 
     useEffect(() => { loadSchedules(); }, []);
 
-    // Check trùng lịch (Chỉ dùng cho form thủ công)
+    // Check trùng lịch (Frontend Validation)
     useEffect(() => {
-        if (activeTab === "office") return; // Bỏ qua nếu đang tab hành chính
+        if (activeTab === "office") return;
         const { date, startTime, endTime } = formData;
         if (!date || !startTime || !endTime) { setOverlapError(""); return; }
 
         const isOverlap = schedules.some(slot => {
             if (slot.date !== date) return false;
+            // So sánh string "HH:mm"
             const slotStart = slot.startTime.substring(0, 5); 
             const slotEnd = slot.endTime.substring(0, 5);
             return (startTime < slotEnd) && (endTime > slotStart);
@@ -56,7 +62,7 @@ export default function LecturerSchedule() {
 
     }, [formData, schedules, activeTab]);
 
-    // Xử lý nhập liệu chung
+    // Xử lý nhập liệu
     const handleManualChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
     const handleBatchChange = (e) => {
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -87,12 +93,8 @@ export default function LecturerSchedule() {
     // --- SUBMIT 2: HÀNH CHÍNH (HÀNG LOẠT) ---
     const handleBatchSubmit = async (e) => {
         e.preventDefault();
-        
         if (!batchForm.fromDate || !batchForm.toDate) {
             alert("Vui lòng chọn khoảng thời gian!"); return;
-        }
-        if (!batchForm.isMorning && !batchForm.isAfternoon) {
-            alert("Vui lòng chọn ít nhất một buổi (Sáng hoặc Chiều)!"); return;
         }
         if (batchForm.fromDate > batchForm.toDate) {
             alert("Ngày kết thúc phải sau ngày bắt đầu!"); return;
@@ -100,52 +102,39 @@ export default function LecturerSchedule() {
 
         setIsSubmitting(true);
         let successCount = 0;
-        let failCount = 0;
-
-        // Tạo danh sách các ngày
         let currentDate = new Date(batchForm.fromDate);
         const stopDate = new Date(batchForm.toDate);
-        
         const requests = [];
 
         while (currentDate <= stopDate) {
-            // Format YYYY-MM-DD
             const dateStr = currentDate.toISOString().split("T")[0];
-
-            // Thêm ca Sáng (07:00 - 11:30)
-            if (batchForm.isMorning) {
-                requests.push(scheduleApi.create({ date: dateStr, startTime: "07:00:00", endTime: "11:30:00" }));
-            }
-            // Thêm ca Chiều (13:30 - 17:30)
-            if (batchForm.isAfternoon) {
-                requests.push(scheduleApi.create({ date: dateStr, startTime: "13:30:00", endTime: "17:30:00" }));
-            }
-
-            // Tăng ngày lên 1
+            if (batchForm.isMorning) requests.push(scheduleApi.create({ date: dateStr, startTime: "07:00:00", endTime: "11:30:00" }));
+            if (batchForm.isAfternoon) requests.push(scheduleApi.create({ date: dateStr, startTime: "13:30:00", endTime: "17:30:00" }));
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        // Chạy Promise.allSettled để không bị dừng nếu có 1 request lỗi
-        const results = await Promise.allSettled(requests);
-        
-        results.forEach(res => {
-            if (res.status === 'fulfilled') successCount++;
-            else failCount++;
+        await Promise.allSettled(requests).then((results) => {
+            successCount = results.filter(res => res.status === 'fulfilled').length;
         });
 
-        alert(`📊 Hoàn tất!\n- Thành công: ${successCount} ca\n- Bỏ qua (do trùng): ${failCount} ca`);
-        
+        alert(`📊 Đã xử lý xong!\n- Thành công: ${successCount} slot.`);
         loadSchedules();
         setIsSubmitting(false);
     };
 
+    // --- XÓA LỊCH ---
     const handleDelete = async (id) => {
-        if(window.confirm("Bạn muốn xóa khung giờ này?")) {
-            try { await scheduleApi.delete(id); loadSchedules(); } 
-            catch { alert("Không thể xóa lịch đã có sinh viên đặt!"); }
+        if(window.confirm("Bạn muốn xóa khung giờ này? \nLưu ý: Nếu đã có sinh viên đặt, bạn cần hủy cuộc hẹn trước.")) {
+            try { 
+                await scheduleApi.delete(id); 
+                loadSchedules(); 
+            } catch (error) { 
+                alert("❌ Không thể xóa! Có thể đã có sinh viên đặt trong khung giờ này."); 
+            }
         }
     };
 
+    // --- GOM NHÓM HIỂN THỊ ---
     const groupedSchedules = schedules.reduce((acc, curr) => {
         const d = curr.date;
         if (!acc[d]) acc[d] = []; acc[d].push(curr); return acc;
@@ -153,14 +142,12 @@ export default function LecturerSchedule() {
 
     return (
         <div className="container-fluid px-4 mt-4 font-monospace">
-            <h3 className="fw-bold text-primary mb-4">🕒 Quản Lý Lịch Rảnh</h3>
+            <h3 className="fw-bold text-primary mb-4">🕒 Quản Lý Lịch Tư Vấn</h3>
 
             <div className="row g-4">
-                {/* --- CỘT TRÁI: FORM --- */}
+                {/* --- CỘT TRÁI: FORM ĐĂNG KÝ --- */}
                 <div className="col-md-5 col-lg-4">
                     <div className="card shadow-sm border-0 rounded-4 sticky-top" style={{ top: "20px", zIndex: 1 }}>
-                        
-                        {/* HEADER + TABS */}
                         <div className="card-header bg-primary text-white fw-bold rounded-top-4 p-0 overflow-hidden">
                             <div className="d-flex text-center">
                                 <button 
@@ -179,10 +166,9 @@ export default function LecturerSchedule() {
                         </div>
 
                         <div className="card-body p-4">
-                            {/* --- TAB 1: THỦ CÔNG --- */}
+                            {/* FORM THỦ CÔNG */}
                             {activeTab === 'manual' && (
                                 <form onSubmit={handleManualSubmit}>
-                                    <h6 className="fw-bold text-secondary mb-3">Thêm từng khung giờ</h6>
                                     <div className="mb-3">
                                         <label className="form-label small fw-bold">Ngày làm việc</label>
                                         <input type="date" className="form-control" name="date" min={new Date().toISOString().split("T")[0]} value={formData.date} onChange={handleManualChange} />
@@ -204,57 +190,32 @@ export default function LecturerSchedule() {
                                 </form>
                             )}
 
-                            {/* --- TAB 2: HÀNH CHÍNH (BATCH) --- */}
+                            {/* FORM HÀNH CHÍNH */}
                             {activeTab === 'office' && (
                                 <form onSubmit={handleBatchSubmit}>
-                                    <h6 className="fw-bold text-secondary mb-3">Đăng ký nhanh nhiều ngày</h6>
-                                    
-                                    <div className="mb-3">
-                                        <label className="form-label small fw-bold">Từ ngày</label>
-                                        <input type="date" className="form-control" name="fromDate" min={new Date().toISOString().split("T")[0]} value={batchForm.fromDate} onChange={handleBatchChange} />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label small fw-bold">Đến ngày</label>
-                                        <input type="date" className="form-control" name="toDate" min={batchForm.fromDate} value={batchForm.toDate} onChange={handleBatchChange} />
-                                    </div>
-
+                                    <div className="mb-3"><label className="form-label small fw-bold">Từ ngày</label><input type="date" className="form-control" name="fromDate" min={new Date().toISOString().split("T")[0]} value={batchForm.fromDate} onChange={handleBatchChange} /></div>
+                                    <div className="mb-3"><label className="form-label small fw-bold">Đến ngày</label><input type="date" className="form-control" name="toDate" min={batchForm.fromDate} value={batchForm.toDate} onChange={handleBatchChange} /></div>
                                     <div className="mb-3 bg-light p-3 rounded border">
-                                        <label className="form-label small fw-bold text-uppercase text-muted mb-2">Chọn ca làm việc:</label>
-                                        
-                                        <div className="form-check mb-2">
-                                            <input className="form-check-input" type="checkbox" id="checkMorning" name="isMorning" checked={batchForm.isMorning} onChange={handleBatchChange} />
-                                            <label className="form-check-label" htmlFor="checkMorning">
-                                                ☀️ Sáng (07:00 - 11:30)
-                                            </label>
-                                        </div>
-                                        
-                                        <div className="form-check">
-                                            <input className="form-check-input" type="checkbox" id="checkAfternoon" name="isAfternoon" checked={batchForm.isAfternoon} onChange={handleBatchChange} />
-                                            <label className="form-check-label" htmlFor="checkAfternoon">
-                                                🌤️ Chiều (13:30 - 17:30)
-                                            </label>
-                                        </div>
+                                        <div className="form-check mb-2"><input className="form-check-input" type="checkbox" id="checkMorning" name="isMorning" checked={batchForm.isMorning} onChange={handleBatchChange} /><label className="form-check-label" htmlFor="checkMorning">☀️ Sáng (07:00 - 11:30)</label></div>
+                                        <div className="form-check"><input className="form-check-input" type="checkbox" id="checkAfternoon" name="isAfternoon" checked={batchForm.isAfternoon} onChange={handleBatchChange} /><label className="form-check-label" htmlFor="checkAfternoon">🌤️ Chiều (13:30 - 17:30)</label></div>
                                     </div>
-
-                                    <div className="alert alert-warning small py-2 border-0">
-                                        <i className="bi bi-lightning-fill me-1"></i>
-                                        Hệ thống sẽ bỏ qua các khung giờ bị trùng.
-                                    </div>
-
-                                    <button type="submit" className="btn btn-success w-100 rounded-pill fw-bold" disabled={isSubmitting}>
-                                        {isSubmitting ? "Đang xử lý..." : "🚀 Đăng Ký Hàng Loạt"}
-                                    </button>
+                                    <button type="submit" className="btn btn-success w-100 rounded-pill fw-bold" disabled={isSubmitting}>{isSubmitting ? "Đang xử lý..." : "🚀 Đăng Ký Nhanh"}</button>
                                 </form>
                             )}
                         </div>
                     </div>
+                    
+                    <div className="alert alert-info mt-3 small shadow-sm border-0 rounded-3">
+                        <i className="bi bi-info-circle-fill me-2"></i>
+                        Danh sách bên phải hiển thị toàn bộ khung giờ bạn đã đăng ký.
+                    </div>
                 </div>
 
-                {/* --- CỘT PHẢI: DANH SÁCH --- */}
+                {/* --- CỘT PHẢI: DANH SÁCH LỊCH GỐC --- */}
                 <div className="col-md-7 col-lg-8">
                     <div className="card shadow-sm border-0 rounded-4" style={{ minHeight: "600px" }}>
                         <div className="card-header bg-white border-bottom-0 pt-4 pb-2 ps-4">
-                            <h5 className="fw-bold text-dark">Danh sách khung giờ đã đăng ký</h5>
+                            <h5 className="fw-bold text-dark">Danh sách khung giờ đã đăng ký (Gốc)</h5>
                         </div>
                         <div className="card-body overflow-auto p-4" style={{ maxHeight: "750px" }}>
                             {loading ? (
@@ -269,19 +230,36 @@ export default function LecturerSchedule() {
                                             <div className="ms-2 border-bottom flex-grow-1"></div>
                                         </div>
                                         <div className="row g-3">
-                                            {groupedSchedules[date].sort((a, b) => a.startTime.localeCompare(b.startTime)).map(slot => (
+                                            {groupedSchedules[date].map(slot => (
                                                 <div key={slot.id} className="col-xl-4 col-md-6">
-                                                    <div className={`p-3 border rounded-3 d-flex justify-content-between align-items-center bg-white shadow-sm h-100 position-relative overflow-hidden ${!slot.available ? "border-success" : ""}`}>
-                                                        <div className={`position-absolute top-0 start-0 bottom-0 ${slot.available ? "bg-secondary" : "bg-success"}`} style={{ width: "4px" }}></div>
-                                                        <div>
-                                                            <div className="fw-bold fs-5 text-dark">{slot.startTime.slice(0, 5)} ➔ {slot.endTime.slice(0, 5)}</div>
-                                                            <div className="small mt-1">
-                                                                {slot.available ? <span className="text-muted">Đang trống</span> : <span className="text-success fw-bold">Đã có SV đặt</span>}
+                                                    <div className="p-3 border rounded-3 bg-white shadow-sm h-100 position-relative">
+                                                        {/* Icon trạng thái */}
+                                                        <div className="d-flex justify-content-between align-items-start">
+                                                            <div>
+                                                                <div className="fw-bold fs-5 text-dark">
+                                                                    {slot.startTime.slice(0, 5)} ➔ {slot.endTime.slice(0, 5)}
+                                                                </div>
+                                                                <div className="small mt-1 text-muted">
+                                                                    ID: #{slot.id}
+                                                                </div>
                                                             </div>
+                                                            <button 
+                                                                className="btn btn-light text-danger btn-sm rounded-circle border-0" 
+                                                                onClick={() => handleDelete(slot.id)} 
+                                                                title="Xóa khung giờ này"
+                                                            >
+                                                                <i className="bi bi-trash"></i>
+                                                            </button>
                                                         </div>
-                                                        {slot.available && (
-                                                            <button className="btn btn-light text-danger btn-sm rounded-circle border-0" onClick={() => handleDelete(slot.id)} title="Xóa"><i className="bi bi-trash"></i></button>
-                                                        )}
+                                                        
+                                                        {/* Status Bar */}
+                                                        <div className="mt-2 pt-2 border-top d-flex align-items-center small">
+                                                            {slot.available ? (
+                                                                <span className="text-success fw-bold"><i className="bi bi-circle me-1"></i>Đang mở đăng ký</span>
+                                                            ) : (
+                                                                <span className="text-warning fw-bold"><i className="bi bi-check-circle-fill me-1"></i>Đã có lượt đặt</span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))}

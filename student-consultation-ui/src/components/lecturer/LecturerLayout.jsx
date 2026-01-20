@@ -81,25 +81,30 @@ export default function LecturerLayout() {
                 <hr className="border-secondary opacity-50 mx-3" />
 
                 {/* 2. Menu Items */}
-                <div className="flex-grow-1 overflow-auto px-3 custom-scrollbar">
-                    <small className="text-uppercase text-secondary fw-bold mb-2 d-block" style={{fontSize: "0.7rem"}}>Menu Chính</small>
-                    
-                    <NavLink to="/lecturer/dashboard" className={getNavLinkClass}>
-                        <span>📊</span> Dashboard
-                    </NavLink>
+<div className="flex-grow-1 overflow-auto px-3 custom-scrollbar">
+    <small className="text-uppercase text-secondary fw-bold mb-2 d-block" style={{fontSize: "0.7rem"}}>Menu Chính</small>
+    
+    <NavLink to="/lecturer/dashboard" className={getNavLinkClass}>
+        <span>📊</span> Dashboard
+    </NavLink>
 
-                    <NavLink to="/lecturer/appointments" className={getNavLinkClass}>
-                        <span>📅</span> Quản lý lịch hẹn
-                    </NavLink>
+    <NavLink to="/lecturer/appointments" className={getNavLinkClass}>
+        <span>📅</span> Quản lý lịch hẹn
+    </NavLink>
 
-                    <NavLink to="/lecturer/schedule" className={getNavLinkClass}>
-                        <span>🕒</span> Đăng ký lịch làm việc
-                    </NavLink>
+    <NavLink to="/lecturer/schedule" className={getNavLinkClass}>
+        <span>🕒</span> Đăng ký lịch làm việc
+    </NavLink>
 
-                    <NavLink to="/lecturer/history" className={getNavLinkClass}>
-                        <span>📜</span> Lịch sử tư vấn
-                    </NavLink>
-                </div>
+    {/* 👇 MỤC MỚI THÊM VÀO ĐÂY */}
+    <NavLink to="/lecturer/free-slots" className={getNavLinkClass}>
+        <span>👀</span> Xem giờ còn trống
+    </NavLink>
+
+    <NavLink to="/lecturer/history" className={getNavLinkClass}>
+        <span>📜</span> Lịch sử tư vấn
+    </NavLink>
+</div>
 
                 {/* 3. USER PROFILE (DỮ LIỆU THẬT) */}
                 <div className="mt-auto p-3 border-top border-secondary border-opacity-25 bg-black bg-opacity-25">
