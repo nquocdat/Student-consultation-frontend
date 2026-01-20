@@ -4,66 +4,98 @@ import { Link } from "react-router-dom";
 const ConsultationHistory = () => {
     const token = localStorage.getItem("token");
     const [appointments, setAppointments] = useState([]);
+    
+    // State cho Modal xem chi tiết
+    const [viewModal, setViewModal] = useState({ show: false, title: "", content: "" });
 
     // 1. Load Data
-    useEffect(() => {
+    const loadData = () => {
         if (!token) return;
         fetch("http://localhost:8080/api/appointment/my", {
             headers: { Authorization: `Bearer ${token}` }
         })
             .then(res => res.json())
             .then(data => {
-                const sorted = data.sort((a, b) => b.id - a.id);
+                // ✅ SORT: Ngày gần nhất xếp trước (Tăng dần a - b)
+                const sorted = data.sort((a, b) => 
+                    new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`)
+                );
                 setAppointments(sorted);
             })
             .catch(console.error);
-    }, [token]);
+    };
 
-    // Helper: Tính giờ kết thúc
+    useEffect(() => { loadData(); }, [token]);
+
+    // Helper Functions
     const getDurationDisplay = (startTime, endTime) => {
         if (endTime) return `${startTime} - ${endTime}`;
-
         const [h, m] = startTime.split(':').map(Number);
-        const date = new Date(); date.setHours(h, m, 0, 0);
-        date.setMinutes(date.getMinutes() + 30);
-        const newH = date.getHours(); const newM = date.getMinutes();
-        const end = `${(newH < 10 ? '0' : '') + newH}:${(newM < 10 ? '0' : '') + newM}`;
+        const date = new Date(); date.setHours(h, m, 0, 0); date.setMinutes(date.getMinutes() + 30);
+        const end = `${(date.getHours() < 10 ? '0' : '') + date.getHours()}:${(date.getMinutes() < 10 ? '0' : '') + date.getMinutes()}`;
         return `${startTime} - ${end}`;
     };
 
-    // 2. Tải file
+    const formatDate = (dateString) => {
+        if (!dateString) return "";
+        const [year, month, day] = dateString.split("-");
+        return `${day}/${month}/${year}`;
+    };
+
     const handleDownload = (attachmentId, fileName) => {
         fetch(`http://localhost:8080/api/appointment/${attachmentId}/download`, {
             method: 'GET', headers: { 'Authorization': `Bearer ${token}` },
         })
-            .then(res => {
-                if (!res.ok) throw new Error("Lỗi tải file");
-                return res.blob();
-            })
+            .then(res => res.blob())
             .then(blob => {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a'); a.href = url; a.download = fileName;
-                document.body.appendChild(a); a.click(); window.URL.revokeObjectURL(url);
+                document.body.appendChild(a); a.click(); a.remove();
             })
-            .catch(e => alert(e.message));
+            .catch(() => alert("Lỗi tải file"));
     };
 
-    // 3. Hủy lịch
-    const cancelAppointment = (id) => {
-        if (!window.confirm("Bạn có chắc chắn muốn hủy yêu cầu này?")) return;
+    const openDetailModal = (title, content) => {
+        setViewModal({ show: true, title, content: content || "Không có nội dung" });
+    };
 
-        fetch(`http://localhost:8080/api/appointment/${id}/cancel/student`, {
-            method: "PUT", headers: { Authorization: `Bearer ${token}` }
-        }).then(res => {
-            if (res.ok) {
-                alert("Đã hủy thành công");
-                setAppointments(prev => prev.map(item =>
-                    item.id === id ? { ...item, statusCode: 'CANCELLED', statusDescription: 'Đã hủy' } : item
-                ));
-            } else {
-                alert("Không thể hủy lịch này (có thể GV đã duyệt rồi)");
-            }
-        });
+    // 2. LOGIC HỦY LỊCH (ĐÃ NÂNG CẤP ĐỂ GỬI LÝ DO)
+    const handleCancel = (appt) => {
+        
+        // A. TRƯỜNG HỢP: PENDING -> Hủy luôn
+        if (appt.statusCode === 'PENDING') {
+            if (!window.confirm("Bạn có chắc chắn muốn hủy yêu cầu này không?")) return;
+            
+            fetch(`http://localhost:8080/api/appointment/${appt.id}/cancel/student`, {
+                method: "PUT", headers: { Authorization: `Bearer ${token}` }
+            }).then(res => {
+                if (res.ok) { alert("Đã hủy thành công"); loadData(); }
+                else alert("Lỗi khi hủy lịch hẹn.");
+            });
+        }
+        
+        // B. TRƯỜNG HỢP: APPROVED -> Gửi yêu cầu hủy kèm lý do
+        else if (appt.statusCode === 'APPROVED') {
+            const reason = window.prompt("Lịch đã được duyệt. Vui lòng nhập lý do xin hủy:");
+            
+            if (reason === null) return; // Bấm Cancel
+            if (reason.trim() === "") { alert("Vui lòng nhập lý do để giảng viên biết!"); return; }
+
+            // 🔥 QUAN TRỌNG: Gửi lý do lên qua query param 'cancelReason'
+            // Backend cần bắt tham số này và nối vào cột 'reason' hoặc 'note' cũ
+            const url = `http://localhost:8080/api/appointment/${appt.id}/cancel/student?cancelReason=${encodeURIComponent(reason)}`;
+
+            fetch(url, {
+                method: "PUT", headers: { Authorization: `Bearer ${token}` }
+            }).then(res => {
+                if (res.ok) { 
+                    alert("Đã gửi yêu cầu. Lý do hủy đã được cập nhật cho giảng viên."); 
+                    loadData(); 
+                } else {
+                    alert("Có lỗi xảy ra khi gửi yêu cầu.");
+                }
+            });
+        }
     };
 
     // --- STYLE BADGES ---
@@ -73,43 +105,32 @@ const ConsultationHistory = () => {
         if (code === 'PENDING') colorClass = "bg-warning text-dark";
         if (code === 'REJECTED') colorClass = "bg-danger";
         if (code === 'COMPLETED') colorClass = "bg-primary";
+        if (code === 'CANCEL_REQUEST') colorClass = "bg-info text-dark"; 
 
-        return <span className={`badge rounded-pill ${colorClass} px-3 py-2`}>{text}</span>;
+        return <span className={`badge rounded-pill ${colorClass} px-3 py-2 border border-light shadow-sm`} style={{minWidth: "100px"}}>{text}</span>;
     };
 
-    // --- HELPER HIỂN THỊ KẾT QUẢ ---
-    const getResultDisplay = (resultCode, note) => {
+    const getResultDisplay = (resultCode) => {
         if (!resultCode) return <span className="text-muted small opacity-50">-</span>;
-
         let badge = <span className="badge bg-secondary">{resultCode}</span>;
         if (resultCode === 'SOLVED') badge = <span className="badge bg-success bg-opacity-75 text-white">✅ Đã giải quyết</span>;
-        else if (resultCode === 'UNSOLVED') badge = <span className="badge bg-warning text-dark border">⚠️ Cần theo dõi thêm</span>;
+        else if (resultCode === 'UNSOLVED') badge = <span className="badge bg-warning text-dark border">⚠️ Cần theo dõi</span>;
         else if (resultCode === 'STUDENT_ABSENT') badge = <span className="badge bg-danger">❌ Vắng mặt</span>;
         else if (resultCode === 'CANCELLED_BY_GV') badge = <span className="badge bg-danger bg-opacity-75">⛔ Hủy bởi GV</span>;
-
-        return (
-            <div className="d-flex flex-column align-items-center">
-                {badge}
-                {/* Note kết quả (nếu cần) */}
-            </div>
-        );
+        return <div className="d-flex flex-column align-items-center">{badge}</div>;
     };
 
     return (
-        <div className="container-fluid px-4 mt-4">
+        <div className="container-fluid px-4 mt-4 font-monospace">
 
-            {/* Header */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h3 className="fw-bold text-primary mb-1">📋 Lịch Sử Tư Vấn</h3>
                     <p className="text-muted mb-0">Theo dõi trạng thái và kết quả các yêu cầu hỗ trợ của bạn</p>
                 </div>
-                <button className="btn btn-light shadow-sm text-primary fw-bold border" onClick={() => window.location.reload()}>
-                    🔄 Làm mới
-                </button>
+                <button className="btn btn-light shadow-sm text-primary border" onClick={loadData}>🔄 Làm mới</button>
             </div>
 
-            {/* Card Bảng */}
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
                 <div className="table-responsive">
                     <table className="table table-hover table-bordered align-middle mb-0" style={{ minWidth: "1400px" }}>
@@ -118,114 +139,120 @@ const ConsultationHistory = () => {
                                 <th className="py-3" style={{ width: "3%" }}>STT</th>
                                 <th className="py-3 text-start" style={{ width: "12%" }}>Giảng viên</th>
                                 <th className="py-3" style={{ width: "8%" }}>Ngày hẹn</th>
-                                <th className="py-3" style={{ width: "10%" }}>Khung giờ</th>
+                                <th className="py-3" style={{ width: "9%" }}>Khung giờ</th>
                                 <th className="py-3" style={{ width: "7%" }}>Hình thức</th>
-                                <th className="py-3 text-start" style={{ width: "7%" }}>File</th>
+                                <th className="py-3" style={{ width: "5%" }}>File</th>
                                 <th className="py-3 text-start" style={{ width: "15%" }}>Chủ đề / Nội dung</th>
-                                {/* ✅ CỘT MỚI: Ghi chú / Lời nhắn từ GV */}
-                                <th className="py-3 text-start" style={{ width: "15%" }}>Ghi chú từ GV</th> 
+                                <th className="py-3 text-start" style={{ width: "15%" }}>Ghi chú từ GV</th>
                                 <th className="py-3" style={{ width: "9%" }}>Trạng thái</th>
                                 <th className="py-3" style={{ width: "10%" }}>Kết quả</th>
-                                <th className="py-3" style={{ width: "4%" }}>Tác vụ</th>
+                                <th className="py-3" style={{ width: "5%" }}>Tác vụ</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {appointments.length === 0 && (
-                                <tr>
-                                    <td colSpan={11} className="text-center py-5">
-                                        <div className="text-muted">
-                                            <i className="bi bi-inbox fs-1 d-block mb-2"></i>
-                                            Bạn chưa có yêu cầu tư vấn nào.
-                                        </div>
-                                    </td>
-                                </tr>
+                            {appointments.length === 0 ? (
+                                <tr><td colSpan={11} className="text-center py-5 text-muted">Bạn chưa có yêu cầu tư vấn nào.</td></tr>
+                            ) : (
+                                appointments.map((a, i) => (
+                                    <tr key={a.id} style={{ height: "65px" }}>
+                                        <td className="text-center fw-bold text-muted">{i + 1}</td>
+                                        
+                                        {/* Tên Giảng viên: Chữ thường, đen */}
+                                        <td className="text-start">
+                                            <Link to={`/student/lecturer-info/${a.lecturerId}`} className="text-dark text-decoration-none hover-text-primary">
+                                                {a.lecturerName}
+                                            </Link>
+                                        </td>
+
+                                        {/* Ngày hẹn: Chữ thường (bỏ fw-medium) */}
+                                        <td className="text-center">{formatDate(a.date)}</td>
+                                        
+                                        <td className="text-center"><span className="badge bg-light text-dark border">{getDurationDisplay(a.time, a.endTime)}</span></td>
+                                        
+                                        <td className="text-center">
+                                            {a.consultationType === "IN_PERSON"
+                                                ? <span className="badge bg-info bg-opacity-10 text-info border border-info rounded-pill">🏢 Trực tiếp</span>
+                                                : <span className="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill">💻 Online</span>
+                                            }
+                                        </td>
+
+                                        <td className="text-center">
+                                            {a.attachments?.length > 0 ? (
+                                                <div className="d-flex flex-column gap-1 align-items-center">
+                                                    {a.attachments.map(f => (
+                                                        <button key={f.id} className="btn btn-sm btn-link text-decoration-none p-0" onClick={() => handleDownload(f.id, f.fileName)} title={f.fileName}>📎 File</button>
+                                                    ))}
+                                                </div>
+                                            ) : <span className="text-muted small opacity-50">-</span>}
+                                        </td>
+
+                                        {/* Chủ đề: Chữ thường, có Popup */}
+                                        <td className="text-start" style={{cursor: "pointer"}} onClick={() => openDetailModal("Nội dung tư vấn", a.reason)}>
+                                            <div className="text-dark text-truncate-2" style={{ maxWidth: "200px", maxHeight: "3em", overflow: "hidden" }}>
+                                                {a.reason || "Không có nội dung"}
+                                            </div>
+                                            {(a.reason && a.reason.length > 50) && <small className="text-primary fst-italic" style={{fontSize: "0.7rem"}}>Xem thêm...</small>}
+                                        </td>
+
+                                        {/* Ghi chú GV */}
+                                        <td className="text-start" style={{cursor: "pointer"}} onClick={() => openDetailModal("Ghi chú từ Giảng viên", a.feedbackNote)}>
+                                            <div className="small text-muted fst-italic text-truncate-2" style={{ maxWidth: "200px", maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap" }}>
+                                                {a.feedbackNote || <span className="opacity-50">--</span>}
+                                            </div>
+                                            {(a.feedbackNote && a.feedbackNote.length > 50) && <small className="text-primary fst-italic" style={{fontSize: "0.7rem"}}>Xem thêm...</small>}
+                                        </td>
+
+                                        <td className="text-center">{getStatusBadge(a.statusCode, a.statusDescription)}</td>
+                                        <td className="text-center">{getResultDisplay(a.consultationResult)}</td>
+
+                                        <td className="text-center">
+                                            {a.statusCode === 'PENDING' && (
+                                                <button className="btn btn-outline-danger btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center mx-auto"
+                                                    style={{ width: "28px", height: "28px" }} title="Hủy yêu cầu" onClick={() => handleCancel(a)}>
+                                                    ✕
+                                                </button>
+                                            )}
+                                            {a.statusCode === 'APPROVED' && (
+                                                <button className="btn btn-outline-warning text-dark btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center mx-auto"
+                                                    style={{ width: "28px", height: "28px" }} title="Xin hủy lịch (Gửi yêu cầu)" onClick={() => handleCancel(a)}>
+                                                    <i className="bi bi-calendar-x"></i>
+                                                </button>
+                                            )}
+                                            {['COMPLETED', 'REJECTED', 'CANCELED', 'CANCEL_REQUEST'].includes(a.statusCode) && (
+                                                <span className="text-muted opacity-25"><i className="bi bi-lock-fill"></i></span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
                             )}
-
-                            {appointments.map((a, i) => (
-                                <tr key={a.id} style={{ height: "65px" }}>
-                                    <td className="fw-bold text-muted text-center">{i + 1}</td>
-
-                                    {/* Giảng viên */}
-                                    <td className="text-start">
-                                        {a.lecturerId ? (
-                                            <div className="d-flex align-items-center">
-                                                <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0"
-                                                    style={{ width: "28px", height: "28px", fontSize: "11px" }}>GV</div>
-                                                <Link to={`/student/lecturer-info/${a.lecturerId}`} className="fw-bold text-primary text-decoration-none text-truncate"
-                                                    style={{ maxWidth: "130px", cursor: "pointer" }} title="Xem thông tin giảng viên">
-                                                    {a.lecturerName}
-                                                </Link>
-                                            </div>
-                                        ) : <span className="badge bg-light text-secondary border rounded-pill fw-normal">Đang xếp...</span>}
-                                    </td>
-
-                                    <td className="text-center fw-medium text-secondary">{a.date}</td>
-                                    
-                                    <td className="text-center">
-                                        <span className="badge bg-light text-dark border px-2 py-1" style={{ fontSize: "0.85rem" }}>
-                                            🕒 {getDurationDisplay(a.time, a.endTime)}
-                                        </span>
-                                    </td>
-
-                                    <td className="text-center">
-                                        {a.consultationType === "IN_PERSON"
-                                            ? <span className="badge bg-info bg-opacity-10 text-info border border-info rounded-pill">🏢 Trực tiếp</span>
-                                            : <span className="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill">💻 Online</span>
-                                        }
-                                    </td>
-
-                                    {/* File */}
-                                    <td className="text-start">
-                                        {a.attachments && a.attachments.length > 0 ? (
-                                            <div className="d-flex flex-column gap-1">
-                                                {a.attachments.map(f => (
-                                                    <a key={f.id} href="#" className="btn btn-sm btn-outline-secondary d-flex align-items-center border-0 text-start px-0 py-0"
-                                                        onClick={(e) => { e.preventDefault(); handleDownload(f.id, f.fileName) }} title="Tải xuống">
-                                                        <span className="me-1 text-primary">📎</span>
-                                                        <span className="text-truncate" style={{ maxWidth: "80px", fontSize: "0.85rem" }}>{f.fileName}</span>
-                                                    </a>
-                                                ))}
-                                            </div>
-                                        ) : <span className="text-muted small opacity-50">-</span>}
-                                    </td>
-
-                                    {/* Chủ đề */}
-                                    <td className="text-start">
-                                        <div className="fw-bold text-dark text-truncate-2" style={{ maxWidth: "200px", maxHeight: "3em", overflow: "hidden" }} title={a.reason}>
-                                            {a.reason || "Không có tiêu đề"}
-                                        </div>
-                                    </td>
-
-                                    {/* ✅ CỘT MỚI: GHI CHÚ TỪ GV ✅ */}
-                                    <td className="text-start">
-                                        <div className="small text-muted fst-italic text-truncate-2" 
-                                             style={{ maxWidth: "200px", maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap" }} 
-                                             title={a.feedbackNote}>
-                                            {a.feedbackNote || <span className="opacity-50">--</span>}
-                                        </div>
-                                    </td>
-
-                                    <td className="text-center">{getStatusBadge(a.statusCode, a.statusDescription)}</td>
-                                    <td className="text-center">{getResultDisplay(a.consultationResult, null)}</td>
-
-                                    <td className="text-center">
-                                        {a.statusCode === 'PENDING' ? (
-                                            <button className="btn btn-outline-danger btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center mx-auto"
-                                                style={{ width: "28px", height: "28px", padding: 0 }} title="Hủy yêu cầu" onClick={() => cancelAppointment(a.id)}>
-                                                ✕
-                                            </button>
-                                        ) : <span className="text-muted opacity-25">--</span>}
-                                    </td>
-                                </tr>
-                            ))}
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <div className="text-center mt-4 text-muted small">
-                Hiển thị {appointments.length} kết quả gần nhất.
-            </div>
+            {/* Modal */}
+            {viewModal.show && (
+                <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} tabIndex="-1">
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content rounded-4 shadow border-0">
+                            <div className="modal-header border-bottom-0">
+                                <h5 className="modal-title fw-bold text-primary">{viewModal.title}</h5>
+                                <button type="button" className="btn-close" onClick={() => setViewModal({ ...viewModal, show: false })}></button>
+                            </div>
+                            <div className="modal-body">
+                                <div className="p-3 bg-light rounded" style={{ whiteSpace: "pre-wrap", maxHeight: "400px", overflowY: "auto" }}>
+                                    {viewModal.content}
+                                </div>
+                            </div>
+                            <div className="modal-footer border-top-0">
+                                <button type="button" className="btn btn-secondary rounded-pill px-4" onClick={() => setViewModal({ ...viewModal, show: false })}>Đóng</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="text-center mt-4 text-muted small">Hiển thị {appointments.length} kết quả gần nhất.</div>
         </div>
     );
 };
