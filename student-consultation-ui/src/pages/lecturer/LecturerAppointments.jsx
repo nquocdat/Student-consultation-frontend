@@ -11,16 +11,15 @@ export default function LecturerAppointments() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filterDate, setFilterDate] = useState("");
 
-    // Bộ lọc trạng thái (Mảng chứa các code trạng thái đang chọn)
-    // Mặc định chọn: PENDING, APPROVED, CANCEL_REQUEST (những cái cần xử lý)
+    // Bộ lọc trạng thái
     const [selectedStatuses, setSelectedStatuses] = useState(["PENDING", "APPROVED", "CANCEL_REQUEST"]);
-    const [showStatusDropdown, setShowStatusDropdown] = useState(false); // Toggle dropdown
+    const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 15;
 
-    // Danh sách tất cả trạng thái để render bộ lọc
+    // Danh sách trạng thái
     const statusOptions = [
         { code: "PENDING", label: "Chờ duyệt", color: "text-warning" },
         { code: "APPROVED", label: "Đã duyệt", color: "text-success" },
@@ -65,17 +64,29 @@ export default function LecturerAppointments() {
     };
 
     // ================= API CALLS =================
-    const downloadAttachment = async (appointmentId, file) => { /* Giữ nguyên code cũ */ };
+    const downloadAttachment = async (appointmentId, file) => {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+            const url = `http://localhost:8080/api/appointment/${file.id}/download`;
+            const res = await axios.get(url, { responseType: "blob", headers: { Authorization: `Bearer ${token}` } });
+            const blob = new Blob([res.data], { type: file.fileType || "application/octet-stream" });
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a"); a.href = downloadUrl; a.download = file.fileName;
+            document.body.appendChild(a); a.click(); a.remove();
+        } catch (err) { alert("Lỗi tải file"); }
+    };
 
     const loadAppointments = async () => {
         try {
             setLoading(true);
             const res = await appointmentApi.getLecturerAppointments();
-            const sorted = res.data.sort(
-                (a, b) =>
-                    new Date(`${a.date}T${a.time}`) -
-                    new Date(`${b.date}T${b.time}`)
+            
+            // ✅ SỬA LẠI SORT: Ngày gần nhất xếp trước (Tăng dần - Ascending)
+            const sorted = res.data.sort((a, b) => 
+                new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`)
             );
+            
             setAppointments(sorted);
         } catch (error) { console.error(error); }
         finally { setLoading(false); }
@@ -83,14 +94,78 @@ export default function LecturerAppointments() {
 
     useEffect(() => { loadAppointments(); }, []);
 
-    // ================= ACTION HANDLERS (Giữ nguyên logic cũ) =================
-    const handleApprove = async (appointment) => { /* Giữ nguyên code cũ */ };
-    const handleResult = async (id, type) => { /* Giữ nguyên code cũ */ };
-    const handleAction = async (actionFn, id, confirmMsg) => { /* Giữ nguyên code cũ */ };
+    // ================= ACTION HANDLERS =================
+
+    // 1. HÀM XỬ LÝ CHUNG
+    const handleAction = async (actionFn, id, confirmMsg) => {
+        if (!actionFn || typeof actionFn !== 'function') {
+            alert("Lỗi: Hàm API chưa được khai báo đúng tên!");
+            return;
+        }
+        if (window.confirm(confirmMsg)) {
+            try {
+                await actionFn(id);
+                alert("Thao tác thành công!");
+                loadAppointments(); 
+            } catch (error) {
+                console.error(error);
+                alert("Có lỗi xảy ra: " + (error.response?.data || "Lỗi hệ thống"));
+            }
+        }
+    };
+
+    // 2. HÀM DUYỆT
+    const handleApprove = async (appointment) => {
+        let messageToSend = "";
+        let userInput = "";
+        
+        if (appointment.consultationType === "IN_PERSON") {
+            userInput = window.prompt("Nhập địa điểm phòng học / văn phòng:", "Vui lòng đến đúng giờ tại phòng C01.");
+            if (userInput) messageToSend = userInput;
+        } else {
+            userInput = window.prompt("Dán Link Google Meet vào đây:", "https://meet.google.com/...");
+            if (userInput && userInput.trim() !== "") messageToSend = `Link Google Meet: ${userInput}`;
+        }
+
+        if (userInput === null) return; 
+        if (!messageToSend || messageToSend.trim() === "") {
+            alert("Vui lòng nhập nội dung!"); return;
+        }
+
+        try {
+            await appointmentApi.approve(appointment.id, messageToSend); 
+            alert("Đã duyệt thành công!");
+            loadAppointments(); 
+        } catch (error) {
+            alert("Lỗi khi duyệt: " + (error.response?.data || "Lỗi hệ thống"));
+        }
+    };
+
+    // 3. HÀM CHỐT KẾT QUẢ
+    const handleResult = async (id, type) => {
+        let confirmMsg = "";
+        let bodyData = {};
+
+        if (type === "SUCCESS") {
+            confirmMsg = "Xác nhận buổi tư vấn đã hoàn thành?";
+            bodyData = { consultationResult: "SOLVED", note: "Đã hoàn thành tư vấn." };
+        } else if (type === "ABSENT") {
+            confirmMsg = "Xác nhận sinh viên VẮNG MẶT?";
+            bodyData = { consultationResult: "STUDENT_ABSENT", note: "Sinh viên vắng mặt không lý do." };
+        }
+
+        if (!window.confirm(confirmMsg)) return;
+
+        try {
+            await appointmentApi.updateResult(id, bodyData);
+            alert("Đã cập nhật kết quả!");
+            loadAppointments();
+        } catch (error) {
+            alert("Lỗi cập nhật: " + (error.response?.data || "Lỗi hệ thống"));
+        }
+    };
 
     // ================= FILTER & PAGINATION LOGIC =================
-
-    // 1. Lọc dữ liệu
     const filteredAppointments = appointments.filter(appt => {
         const term = searchTerm.toLowerCase();
         const matchSearch =
@@ -99,28 +174,23 @@ export default function LecturerAppointments() {
             (appt.studentEmail?.toLowerCase() || "").includes(term);
 
         const matchDate = filterDate ? appt.date === filterDate : true;
-
-        // Lọc theo trạng thái (nếu mảng selectedStatuses rỗng thì coi như chọn tất cả)
         const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(appt.statusCode);
 
         return matchSearch && matchDate && matchStatus;
     });
 
-    // 2. Tính toán phân trang
     const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentItems = filteredAppointments.slice(indexOfFirstItem, indexOfLastItem);
 
-    // Hàm chuyển trang
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-    // Hàm xử lý checkbox lọc trạng thái
     const toggleStatus = (code) => {
         setSelectedStatuses(prev =>
             prev.includes(code) ? prev.filter(s => s !== code) : [...prev, code]
         );
-        setCurrentPage(1); // Reset về trang 1 khi lọc
+        setCurrentPage(1); 
     };
 
     if (loading) return <div className="d-flex justify-content-center align-items-center vh-100"><div className="spinner-border text-primary"></div></div>;
@@ -136,105 +206,38 @@ export default function LecturerAppointments() {
                 </div>
 
                 <div className="d-flex flex-wrap gap-2 align-items-start">
-
                     <div className="position-relative shadow-sm" style={{ width: "220px" }}>
-                        <i
-                            className="bi bi-search position-absolute text-muted"
-                            style={{
-                                top: "50%",              // ✅ CANH GIỮA
-                                left: "12px",
-                                transform: "translateY(-50%)",
-                                fontSize: "16px",
-                                pointerEvents: "none"    // ✅ tránh che click input
-                            }}
-                        ></i>
-
-                        <input
-                            type="text"
-                            className="form-control ps-5"
-                            placeholder="Tên, MSSV..."
-                            style={{
-                                height: "44px",
-                                borderRadius: "8px"
-                            }}
-                            value={searchTerm}
-                            onChange={e => {
-                                setSearchTerm(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                        />
+                        <i className="bi bi-search position-absolute text-muted" style={{ top: "50%", left: "12px", transform: "translateY(-50%)", fontSize: "16px", pointerEvents: "none" }}></i>
+                        <input type="text" className="form-control ps-5" placeholder="Tên, MSSV..." style={{ height: "38px", borderRadius: "8px" }} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
                     </div>
 
+                    <input type="date" className="form-control shadow-sm" style={{ width: "150px", height: "38px" }} value={filterDate} onChange={e => { setFilterDate(e.target.value); setCurrentPage(1); }} />
 
-                    {/* 2. Date */}
-                    <input
-                        type="date"
-                        className="form-control shadow-sm"
-                        style={{ width: "150px", height: "38px" }}
-                        value={filterDate}
-                        onChange={e => { setFilterDate(e.target.value); setCurrentPage(1); }}
-                    />
-
-                    {/* 3. Trạng thái */}
                     <div className="position-relative">
-                        <button
-                            className="btn btn-white border shadow-sm dropdown-toggle d-flex align-items-center gap-2"
-                            style={{ height: "38px" }}
-                            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                        >
-                            <i className="bi bi-funnel"></i>
-                            Trạng thái ({selectedStatuses.length})
+                        <button className="btn btn-white border shadow-sm dropdown-toggle d-flex align-items-center gap-2" style={{ height: "38px" }} onClick={() => setShowStatusDropdown(!showStatusDropdown)}>
+                            <i className="bi bi-funnel"></i> Trạng thái ({selectedStatuses.length})
                         </button>
-
                         {showStatusDropdown && (
-                            <div
-                                className="card position-absolute shadow p-2 mt-1 z-3"
-                                style={{ width: "200px", right: 0 }}
-                            >
-                                <div className="d-flex flex-column gap-1">
-                                    {statusOptions.map(opt => (
-                                        <label
-                                            key={opt.code}
-                                            className="d-flex align-items-center gap-2 px-2 py-1 hover-bg-light rounded cursor-pointer"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedStatuses.includes(opt.code)}
-                                                onChange={() => toggleStatus(opt.code)}
-                                            />
-                                            <span className={`small fw-bold ${opt.color}`}>{opt.label}</span>
-                                        </label>
-                                    ))}
-                                    <hr className="my-1" />
-                                    <button
-                                        className="btn btn-xs btn-link text-decoration-none text-center"
-                                        onClick={() => setSelectedStatuses([])}
-                                    >
-                                        Xóa chọn tất cả
-                                    </button>
+                            <>
+                                <div className="card position-absolute shadow p-2 mt-1 z-3" style={{ width: "200px", right: 0 }}>
+                                    <div className="d-flex flex-column gap-1">
+                                        {statusOptions.map(opt => (
+                                            <label key={opt.code} className="d-flex align-items-center gap-2 px-2 py-1 hover-bg-light rounded cursor-pointer">
+                                                <input type="checkbox" checked={selectedStatuses.includes(opt.code)} onChange={() => toggleStatus(opt.code)} />
+                                                <span className={`small fw-bold ${opt.color}`}>{opt.label}</span>
+                                            </label>
+                                        ))}
+                                        <hr className="my-1" />
+                                        <button className="btn btn-xs btn-link text-decoration-none text-center" onClick={() => setSelectedStatuses([])}>Xóa chọn tất cả</button>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-
-                        {showStatusDropdown && (
-                            <div
-                                className="position-fixed top-0 start-0 w-100 h-100 z-2"
-                                onClick={() => setShowStatusDropdown(false)}
-                            />
+                                <div className="position-fixed top-0 start-0 w-100 h-100 z-2" onClick={() => setShowStatusDropdown(false)} />
+                            </>
                         )}
                     </div>
 
-                    {/* Refresh */}
-                    <button
-                        className="btn btn-light shadow-sm text-primary border"
-                        style={{ height: "38px" }}
-                        onClick={loadAppointments}
-                        title="Làm mới"
-                    >
-                        🔄
-                    </button>
+                    <button className="btn btn-light shadow-sm text-primary border" style={{ height: "38px" }} onClick={loadAppointments} title="Làm mới">🔄</button>
                 </div>
-
             </div>
 
             {/* --- TABLE --- */}
@@ -244,7 +247,6 @@ export default function LecturerAppointments() {
                         <thead className="bg-light text-secondary">
                             <tr className="text-uppercase small fw-bold text-center">
                                 <th className="py-3" style={{ width: "3%" }}>STT</th>
-                                {/* ... Các cột Header giữ nguyên như cũ ... */}
                                 <th className="py-3" style={{ width: "6%" }}>Mã SV</th>
                                 <th className="py-3 text-start" style={{ width: "10%" }}>Tên Sinh viên</th>
                                 <th className="py-3" style={{ width: "7%" }}>SĐT</th>
@@ -266,26 +268,22 @@ export default function LecturerAppointments() {
                             ) : (
                                 currentItems.map((appt, i) => (
                                     <tr key={appt.id}>
-                                        {/* STT tính theo trang hiện tại */}
-                                        <td className="text-center fw-bold text-muted">
-                                            {(currentPage - 1) * itemsPerPage + i + 1}
-                                        </td>
-
-                                        {/* ... Phần nội dung các cột giữ nguyên code cũ ... */}
+                                        <td className="text-center fw-bold text-muted">{(currentPage - 1) * itemsPerPage + i + 1}</td>
                                         <td className="text-center"><span className="badge bg-light text-dark border font-monospace">{appt.studentCode || "---"}</span></td>
-                                        <td className="text-start fw-normal text-dark">{appt.studentName}</td>
+                                        
+                                        {/* ✅ SỬA Ở ĐÂY: Xóa fw-bold để tên không in đậm */}
+                                        <td className="text-start text-dark">{appt.studentName}</td>
+                                        
                                         <td className="text-center small">{appt.studentPhone || "--"}</td>
                                         <td className="text-start small text-truncate" style={{ maxWidth: "150px" }} title={appt.studentEmail}>{appt.studentEmail}</td>
                                         <td className="text-center fw-medium" style={{ fontSize: "0.9rem" }}>{formatDate(appt.date)}</td>
                                         <td className="text-center"><span className="badge bg-white text-dark border px-2 py-1 shadow-sm font-monospace">🕒 {getDurationDisplay(appt.time)}</span></td>
-
                                         <td className="text-center">
                                             {appt.consultationType === "IN_PERSON"
                                                 ? <span className="badge bg-info bg-opacity-10 text-info border border-info rounded-pill">🏢 Trực tiếp</span>
                                                 : <span className="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill">💻 Online</span>
                                             }
                                         </td>
-
                                         <td className="text-center">
                                             {appt.attachments?.length > 0 ? (
                                                 <div className="d-flex flex-column gap-1 align-items-center">
@@ -297,13 +295,11 @@ export default function LecturerAppointments() {
                                                 </div>
                                             ) : <span className="text-muted small opacity-50">-</span>}
                                         </td>
-
                                         <td className="text-start"><div className="text-truncate-2" style={{ maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap", fontSize: "0.9rem" }} title={appt.reason}>{appt.reason || "Không có nội dung"}</div></td>
                                         <td className="text-start"><div className="small text-muted fst-italic text-truncate-2" style={{ maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap" }} title={appt.feedbackNote}>{appt.feedbackNote || <span className="opacity-25">--</span>}</div></td>
                                         <td className="text-center">{getStatusBadge(appt.statusCode, appt.statusDescription)}</td>
                                         <td className="text-center">{getResultDisplay(appt.consultationResult)}</td>
-
-                                        {/* CỘT TÁC VỤ (Giữ nguyên logic cũ) */}
+                                        
                                         <td className="text-center">
                                             {appt.statusCode === "PENDING" && (
                                                 <div className="d-flex justify-content-center gap-2">
@@ -319,8 +315,8 @@ export default function LecturerAppointments() {
                                             )}
                                             {appt.statusCode === "CANCEL_REQUEST" && (
                                                 <div className="d-flex justify-content-center gap-2">
-                                                    <button className="btn btn-warning btn-sm rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center" style={{ width: "32px", height: "32px" }} onClick={() => handleAction(appointmentApi.approveCancel, appt.id, "Đồng ý hủy?")} title="Đồng ý"><i className="bi bi-check-lg"></i></button>
-                                                    <button className="btn btn-secondary btn-sm rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center" style={{ width: "32px", height: "32px" }} onClick={() => handleAction(appointmentApi.rejectCancel, appt.id, "Không hủy?")} title="Không"><i className="bi bi-arrow-return-left"></i></button>
+                                                    <button className="btn btn-warning btn-sm rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center" style={{ width: "32px", height: "32px" }} onClick={() => handleAction(appointmentApi.approveCancelRequest, appt.id, "Đồng ý hủy?")} title="Đồng ý"><i className="bi bi-check-lg"></i></button>
+                                                    <button className="btn btn-secondary btn-sm rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center" style={{ width: "32px", height: "32px" }} onClick={() => handleAction(appointmentApi.rejectCancelRequest, appt.id, "Không hủy?")} title="Không"><i className="bi bi-arrow-return-left"></i></button>
                                                 </div>
                                             )}
                                             {["COMPLETED", "REJECTED", "CANCELED"].includes(appt.statusCode) && (
@@ -335,30 +331,17 @@ export default function LecturerAppointments() {
                 </div>
             </div>
 
-            {/* --- PAGINATION CONTROL --- */}
+            {/* --- PAGINATION --- */}
             {filteredAppointments.length > 0 && (
                 <div className="d-flex justify-content-between align-items-center">
-                    <div className="text-muted small">
-                        Hiển thị {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, filteredAppointments.length)} / {filteredAppointments.length} bản ghi
-                    </div>
-
+                    <div className="text-muted small">Hiển thị {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, filteredAppointments.length)} / {filteredAppointments.length} bản ghi</div>
                     <nav>
                         <ul className="pagination pagination-sm mb-0">
-                            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                                <button className="page-link" onClick={() => paginate(currentPage - 1)}>Trước</button>
-                            </li>
-
+                            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}><button className="page-link" onClick={() => paginate(currentPage - 1)}>Trước</button></li>
                             {[...Array(totalPages)].map((_, i) => (
-                                <li key={i} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
-                                    <button className="page-link" onClick={() => paginate(i + 1)}>
-                                        {i + 1}
-                                    </button>
-                                </li>
+                                <li key={i} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}><button className="page-link" onClick={() => paginate(i + 1)}>{i + 1}</button></li>
                             ))}
-
-                            <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                                <button className="page-link" onClick={() => paginate(currentPage + 1)}>Sau</button>
-                            </li>
+                            <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}><button className="page-link" onClick={() => paginate(currentPage + 1)}>Sau</button></li>
                         </ul>
                     </nav>
                 </div>
