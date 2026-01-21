@@ -1,0 +1,40 @@
+[33mb9d989e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m trước khi sửa lỗi bị cắt slot
+[33m068a5f7[m gd đăng kí lịch làm việc gv đang sửa
+[33me078a6e[m gd giảng viên đăng kí lịch làm việc
+[33m5072d4d[m sv hủy kèm lí do sau khi được duyệt
+[33m724797f[m căn chỉnh lí do, lời nhắn
+[33mf445274[m fix mất hàm chức năng
+[33mab9dfdf[m thu nhỏ Sidebar
+[33mb5139c2[m giao diện quản lý cuộc hẹn của sinh viên
+[33mba78fbf[m fix gửi email cuộc hẹn
+[33mf0b34dd[m gửi link meet khi duyệt
+[33m4cf76e2[m giảng viên thêm lời nhắn khi duyệt lịch
+[33m9ad786e[m lịch sử cuộc hẹn của lecturer
+[33mc84b6b6[m profile lecturer
+[33mcd6df45[m chuẩn hóa lecturer
+[33m34bd745[m fix thêm cột kết quả
+[33m8f4f843[m thêm dở cột kết quả
+[33m74449b0[m fix chọn ngày báo không có lịch
+[33mf3425d1[m fix student hủy lịch
+[33m303a3f1[m đăng xuất
+[33mae211da[m đồng bộ thông tin và Sidebar
+[33m394bd57[m gd đổi mật khẩu
+[33me37e4e9[m fix load trang mất avatar
+[33m05af72e[m xoa cot email fullname thua
+[33m039758f[m upload avatar
+[33m25557cc[m giao diện lấy toàn bộ thông tin student
+[33m970cf0e[m gửi email cấp lại password
+[33m8e047f6[m tach gd tu van va lich su tu van
+[33m8bbbe32[m ds chờ
+[33m120f558[m da fix gio linh dong
+[33m5a10c29[m truoc khi fix gio tu van
+[33m40aebc2[m lecturer download file
+[33mf8e7369[m  lecturer chua download file
+[33m63d6b76[m  hiển thị cuộc hẹn lecturer
+[33m9c70e19[m giao dienj login
+[33m49b301b[m file đình kèm
+[33ma4ac337[m slot trống sau khi hủy
+[33m22b954f[m lấy tên lecturer
+[33ma91ee43[m fix slot rảnh
+[33m2d41781[m tao lich hen fix
+[33m236baba[m login

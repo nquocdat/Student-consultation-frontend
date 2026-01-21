@@ -142,7 +142,7 @@ export default function LecturerSchedule() {
 
     return (
         <div className="container-fluid px-4 mt-4 font-monospace">
-            <h3 className="fw-bold text-primary mb-4">🕒 Quản Lý Lịch Tư Vấn</h3>
+            <h3 className="fw-bold text-primary mb-4">🕒 Quản Lý Lịch Làm Việc</h3>
 
             <div className="row g-4">
                 {/* --- CỘT TRÁI: FORM ĐĂNG KÝ --- */}
@@ -215,7 +215,7 @@ export default function LecturerSchedule() {
                 <div className="col-md-7 col-lg-8">
                     <div className="card shadow-sm border-0 rounded-4" style={{ minHeight: "600px" }}>
                         <div className="card-header bg-white border-bottom-0 pt-4 pb-2 ps-4">
-                            <h5 className="fw-bold text-dark">Danh sách khung giờ đã đăng ký (Gốc)</h5>
+                            <h5 className="fw-bold text-dark">Danh sách khung giờ còn trống</h5>
                         </div>
                         <div className="card-body overflow-auto p-4" style={{ maxHeight: "750px" }}>
                             {loading ? (

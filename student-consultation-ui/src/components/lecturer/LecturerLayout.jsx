@@ -96,10 +96,6 @@ export default function LecturerLayout() {
         <span>🕒</span> Đăng ký lịch làm việc
     </NavLink>
 
-    {/* 👇 MỤC MỚI THÊM VÀO ĐÂY */}
-    <NavLink to="/lecturer/free-slots" className={getNavLinkClass}>
-        <span>👀</span> Xem giờ còn trống
-    </NavLink>
 
     <NavLink to="/lecturer/history" className={getNavLinkClass}>
         <span>📜</span> Lịch sử tư vấn

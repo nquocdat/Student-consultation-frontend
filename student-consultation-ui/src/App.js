@@ -14,7 +14,7 @@ import StudentProfile from "./pages/student/StudentProfile";
 import ForgotPassword from "./components/ForgotPassword";
 import LecturerDetail from "./pages/lecturer/LecturerDetail";
 import LecturerSchedule from "./pages/lecturer/LecturerSchedule";
-import LecturerFreeSlots from "./pages/lecturer/LecturerFreeSlots";
+
 
 
 function App() {
@@ -55,7 +55,7 @@ function App() {
           <Route path="appointments" element={<LecturerAppointments />} />
            <Route path="profile" element={<LecturerProfile />} />
            <Route path="schedule" element={<LecturerSchedule />} />
-           <Route path="free-slots" element={<LecturerFreeSlots />} />
+
           
         </Route>
       </Routes>
