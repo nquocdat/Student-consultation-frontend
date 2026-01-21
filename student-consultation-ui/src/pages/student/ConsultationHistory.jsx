@@ -203,7 +203,7 @@ const ConsultationHistory = () => {
                     <h3 className="fw-bold text-primary mb-1">📋 Lịch Sử Tư Vấn</h3>
                     <p className="text-muted mb-0">Theo dõi trạng thái và kết quả các yêu cầu hỗ trợ của bạn</p>
                 </div>
-                <button className="btn btn-light shadow-sm text-primary border" onClick={loadData}>🔄 Làm mới</button>
+                
             </div>
 
             {/* --- THANH CÔNG CỤ (FIX CỨNG CHIỀU CAO 45PX CHO TẤT CẢ) --- */}
