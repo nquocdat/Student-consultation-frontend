@@ -28,8 +28,9 @@ const ConsultationHistory = () => {
         })
             .then(res => res.json())
             .then(data => {
+                // ✅ SẮP XẾP: Ngày gần nhất đến ngày xa nhất (Tăng dần a - b)
                 const sorted = data.sort((a, b) =>
-                    new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`)
+                    new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`)
                 );
                 setAppointments(sorted);
                 setFilteredApps(sorted);
@@ -133,7 +134,18 @@ const ConsultationHistory = () => {
         setActiveDropdown(null);
     };
 
-    const getDurationDisplay = (startTime, endTime) => endTime ? `${startTime} - ${endTime}` : `${startTime}`;
+    // ✅ ĐÃ SỬA: Hiển thị đúng dữ liệu thật từ DB (Start - End)
+    // Nếu Backend chưa trả về endTime, bạn cần kiểm tra lại AppointmentDTO ở Java nhé
+    const getDurationDisplay = (startTime, endTime) => {
+        // Cắt chuỗi để bỏ giây (nếu có): 08:00:00 -> 08:00
+        const formatTime = (t) => t ? t.substring(0, 5) : "";
+        
+        if (startTime && endTime) {
+            return `${formatTime(startTime)} - ${formatTime(endTime)}`;
+        }
+        return formatTime(startTime); // Chỉ hiện giờ bắt đầu nếu thiếu giờ kết thúc
+    };
+
     const formatDate = (dateString) => {
         if (!dateString) return "";
         const [year, month, day] = dateString.split("-");
@@ -194,15 +206,13 @@ const ConsultationHistory = () => {
                 <button className="btn btn-light shadow-sm text-primary border" onClick={loadData}>🔄 Làm mới</button>
             </div>
 
-            {/* --- THANH CÔNG CỤ (FIX LỖI LỆCH BOOTSTRAP) --- */}
+            {/* --- THANH CÔNG CỤ (FIX CỨNG CHIỀU CAO 45PX CHO TẤT CẢ) --- */}
             <div className="card border-0 shadow-sm rounded-4 mb-4 bg-white" style={{ zIndex: 10 }} ref={dropdownRef}>
                 <div className="card-body p-3">
-                    {/* Thêm align-items-end hoặc center để căn gióng hàng */}
                     <div className="row g-3">
-
+                        
                         {/* 1. Tìm tên GV */}
                         <div className="col-md-4">
-                            {/* Wrapper Input Group: Set cứng chiều cao ở đây */}
                             <div className="input-group" style={{ height: "45px" }}>
                                 <span className="input-group-text bg-white border-end-0 d-flex align-items-center justify-content-center"
                                     style={{ width: "45px" }}>
@@ -214,7 +224,6 @@ const ConsultationHistory = () => {
                                     placeholder="Tìm tên giảng viên..."
                                     value={searchName}
                                     onChange={(e) => setSearchName(e.target.value)}
-                                    // QUAN TRỌNG: style height 100% để nó ăn theo wrapper cha 45px
                                     style={{ height: "100%" }}
                                 />
                             </div>
@@ -225,7 +234,6 @@ const ConsultationHistory = () => {
                             <div className="dropdown h-100">
                                 <button className="btn btn-white border w-100 text-start d-flex justify-content-between align-items-center shadow-none"
                                     type="button" onClick={() => toggleDropdown('STATUS')}
-                                    // Set cứng 45px
                                     style={{ height: "45px" }}
                                 >
                                     <span className="text-truncate d-flex align-items-center">
@@ -235,7 +243,6 @@ const ConsultationHistory = () => {
                                     <i className="bi bi-chevron-down small text-muted"></i>
                                 </button>
 
-                                {/* Menu dropdown */}
                                 <ul className={`dropdown-menu w-100 p-2 shadow border-0 mt-1 ${activeDropdown === 'STATUS' ? 'show' : ''}`}>
                                     <li><h6 className="dropdown-header small text-muted text-uppercase">Chọn trạng thái hiển thị</h6></li>
                                     {STATUS_OPTIONS.map(opt => (
@@ -256,7 +263,6 @@ const ConsultationHistory = () => {
                             <div className="dropdown h-100">
                                 <button className="btn btn-white border w-100 text-start d-flex justify-content-between align-items-center shadow-none"
                                     type="button" onClick={() => toggleDropdown('DATE')}
-                                    // Set cứng 45px
                                     style={{ height: "45px" }}
                                 >
                                     <span className="text-truncate d-flex align-items-center">
@@ -266,7 +272,6 @@ const ConsultationHistory = () => {
                                     <i className="bi bi-chevron-down small text-muted"></i>
                                 </button>
 
-                                {/* Menu dropdown */}
                                 <ul className={`dropdown-menu shadow border-0 mt-1 ${activeDropdown === 'DATE' ? 'show' : ''}`} style={{ minWidth: "260px" }}>
                                     <li><h6 className="dropdown-header small text-muted">Chọn nhanh</h6></li>
                                     <li><button className="dropdown-item py-2" onClick={() => handleQuickDateSelect('TODAY')}>Hôm nay</button></li>
@@ -293,7 +298,6 @@ const ConsultationHistory = () => {
                         <div className="col-md-2 d-grid">
                             <button className="btn btn-outline-secondary border-0 d-flex justify-content-center align-items-center shadow-none"
                                 onClick={() => { setSearchName(""); setSelectedStatuses([]); handleQuickDateSelect('ALL'); }}
-                                // Set cứng 45px
                                 style={{ height: "45px" }}
                             >
                                 <i className="bi bi-arrow-counterclockwise me-2 fs-5"></i> <span className="mt-1">Reset</span>
@@ -302,8 +306,6 @@ const ConsultationHistory = () => {
                     </div>
                 </div>
             </div>
-
-
 
             {/* --- BẢNG DỮ LIỆU --- */}
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
@@ -333,7 +335,10 @@ const ConsultationHistory = () => {
                                         <td className="text-center fw-bold text-muted">{i + 1}</td>
                                         <td className="text-start"><Link to={`/student/lecturer-info/${a.lecturerId}`} className="text-dark text-decoration-none">{a.lecturerName}</Link></td>
                                         <td className="text-center">{formatDate(a.date)}</td>
+                                        
+                                        {/* ✅ ĐÃ SỬA: Hiển thị Khung giờ (Start - End) */}
                                         <td className="text-center"><span className="badge bg-light text-dark border">{getDurationDisplay(a.time, a.endTime)}</span></td>
+                                        
                                         <td className="text-center">{a.consultationType === "IN_PERSON" ? "🏢 Trực tiếp" : "💻 Online"}</td>
                                         <td className="text-center">{a.attachments?.length > 0 ? "📎 Có file" : "-"}</td>
                                         <td className="text-start cursor-pointer" onClick={() => openDetailModal("Nội dung", a.reason)}><div className="text-truncate" style={{ maxWidth: "200px" }}>{a.reason}</div></td>
