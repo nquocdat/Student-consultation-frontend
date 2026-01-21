@@ -1,10 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 
 const ConsultationHistory = () => {
     const token = localStorage.getItem("token");
     const [appointments, setAppointments] = useState([]);
+    const [filteredApps, setFilteredApps] = useState([]);
     
+    // --- STATE CHO BỘ LỌC ---
+    const [searchName, setSearchName] = useState(""); 
+    const [selectedStatuses, setSelectedStatuses] = useState([]); 
+    const [dateFilter, setDateFilter] = useState({ 
+        label: "📅 Tất cả thời gian", type: "ALL", startDate: null, endDate: null 
+    });
+
+    // --- STATE ĐIỀU KHIỂN DROPDOWN (Thay thế Bootstrap JS) ---
+    const [activeDropdown, setActiveDropdown] = useState(null); // 'STATUS' | 'DATE' | null
+    const dropdownRef = useRef(null); // Để phát hiện click ra ngoài
+
     // State cho Modal xem chi tiết
     const [viewModal, setViewModal] = useState({ show: false, title: "", content: "" });
 
@@ -16,113 +28,173 @@ const ConsultationHistory = () => {
         })
             .then(res => res.json())
             .then(data => {
-                // ✅ SORT: Ngày gần nhất xếp trước (Tăng dần a - b)
                 const sorted = data.sort((a, b) => 
-                    new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`)
+                    new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`)
                 );
                 setAppointments(sorted);
+                setFilteredApps(sorted);
             })
             .catch(console.error);
     };
 
     useEffect(() => { loadData(); }, [token]);
 
-    // Helper Functions
-    const getDurationDisplay = (startTime, endTime) => {
-        if (endTime) return `${startTime} - ${endTime}`;
-        const [h, m] = startTime.split(':').map(Number);
-        const date = new Date(); date.setHours(h, m, 0, 0); date.setMinutes(date.getMinutes() + 30);
-        const end = `${(date.getHours() < 10 ? '0' : '') + date.getHours()}:${(date.getMinutes() < 10 ? '0' : '') + date.getMinutes()}`;
-        return `${startTime} - ${end}`;
+    // 2. XỬ LÝ CLICK RA NGOÀI ĐỂ ĐÓNG DROPDOWN
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setActiveDropdown(null);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // 3. LOGIC FILTER
+    useEffect(() => {
+        let result = [...appointments];
+
+        // A. Lọc tên
+        if (searchName.trim() !== "") {
+            result = result.filter(a => a.lecturerName.toLowerCase().includes(searchName.toLowerCase()));
+        }
+
+        // B. Lọc Trạng thái
+        if (selectedStatuses.length > 0) {
+            result = result.filter(a => selectedStatuses.includes(a.statusCode));
+        }
+
+        // C. Lọc Thời gian
+        if (dateFilter.type !== "ALL" && dateFilter.startDate && dateFilter.endDate) {
+            result = result.filter(a => {
+                const appDate = new Date(a.date);
+                appDate.setHours(0, 0, 0, 0);
+                const start = new Date(dateFilter.startDate);
+                start.setHours(0, 0, 0, 0);
+                const end = new Date(dateFilter.endDate);
+                end.setHours(23, 59, 59, 999);
+                return appDate >= start && appDate <= end;
+            });
+        }
+        setFilteredApps(result);
+    }, [searchName, selectedStatuses, dateFilter, appointments]);
+
+    // --- HÀM HỖ TRỢ ---
+    const toggleDropdown = (name) => {
+        if (activeDropdown === name) setActiveDropdown(null);
+        else setActiveDropdown(name);
     };
 
+    const toggleStatus = (code) => {
+        if (selectedStatuses.includes(code)) {
+            setSelectedStatuses(selectedStatuses.filter(s => s !== code));
+        } else {
+            setSelectedStatuses([...selectedStatuses, code]);
+        }
+    };
+
+    const handleQuickDateSelect = (type) => {
+        const today = new Date();
+        let start = new Date(), end = new Date(), label = "";
+
+        switch (type) {
+            case "TODAY": label = "Hôm nay"; break;
+            case "YESTERDAY": 
+                start.setDate(today.getDate() - 1); end.setDate(today.getDate() - 1); 
+                label = "Hôm qua"; break;
+            case "LAST_7_DAYS": 
+                start.setDate(today.getDate() - 6); 
+                label = "Trong 7 ngày qua"; break;
+            case "LAST_30_DAYS": 
+                start.setDate(today.getDate() - 29); 
+                label = "Trong 30 ngày qua"; break;
+            case "ALL": default:
+                setDateFilter({ label: "📅 Tất cả thời gian", type: "ALL", startDate: null, endDate: null });
+                setActiveDropdown(null); // Đóng menu sau khi chọn
+                return;
+        }
+        setDateFilter({ label, type, startDate: start, endDate: end });
+        setActiveDropdown(null);
+    };
+
+    const handleSpecificDate = (e) => {
+        if(!e.target.value) return;
+        const dateVal = new Date(e.target.value);
+        setDateFilter({ label: `Ngày ${formatDate(e.target.value)}`, type: "SPECIFIC_DATE", startDate: dateVal, endDate: dateVal });
+        setActiveDropdown(null);
+    };
+
+    const handleSpecificMonth = (e) => {
+        if(!e.target.value) return;
+        const [year, month] = e.target.value.split('-');
+        const start = new Date(year, month - 1, 1);
+        const end = new Date(year, month, 0); 
+        setDateFilter({ label: `Tháng ${month}/${year}`, type: "SPECIFIC_MONTH", startDate: start, endDate: end });
+        setActiveDropdown(null);
+    };
+
+    // --- HÀM DISPLAY/API CŨ ---
+    const getDurationDisplay = (startTime, endTime) => endTime ? `${startTime} - ${endTime}` : `${startTime}`;
     const formatDate = (dateString) => {
         if (!dateString) return "";
         const [year, month, day] = dateString.split("-");
         return `${day}/${month}/${year}`;
     };
-
     const handleDownload = (attachmentId, fileName) => {
         fetch(`http://localhost:8080/api/appointment/${attachmentId}/download`, {
             method: 'GET', headers: { 'Authorization': `Bearer ${token}` },
-        })
-            .then(res => res.blob())
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = fileName;
-                document.body.appendChild(a); a.click(); a.remove();
-            })
-            .catch(() => alert("Lỗi tải file"));
+        }).then(res => res.blob()).then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = fileName;
+            document.body.appendChild(a); a.click(); a.remove();
+        }).catch(() => alert("Lỗi tải file"));
     };
-
-    const openDetailModal = (title, content) => {
-        setViewModal({ show: true, title, content: content || "Không có nội dung" });
-    };
-
-    // 2. LOGIC HỦY LỊCH (ĐÃ NÂNG CẤP ĐỂ GỬI LÝ DO)
+    const openDetailModal = (title, content) => setViewModal({ show: true, title, content: content || "Không có nội dung" });
+    
     const handleCancel = (appt) => {
-        
-        // A. TRƯỜNG HỢP: PENDING -> Hủy luôn
         if (appt.statusCode === 'PENDING') {
             if (!window.confirm("Bạn có chắc chắn muốn hủy yêu cầu này không?")) return;
-            
             fetch(`http://localhost:8080/api/appointment/${appt.id}/cancel/student`, {
                 method: "PUT", headers: { Authorization: `Bearer ${token}` }
-            }).then(res => {
-                if (res.ok) { alert("Đã hủy thành công"); loadData(); }
-                else alert("Lỗi khi hủy lịch hẹn.");
-            });
-        }
-        
-        // B. TRƯỜNG HỢP: APPROVED -> Gửi yêu cầu hủy kèm lý do
-        else if (appt.statusCode === 'APPROVED') {
-            const reason = window.prompt("Lịch đã được duyệt. Vui lòng nhập lý do xin hủy:");
-            
-            if (reason === null) return; // Bấm Cancel
-            if (reason.trim() === "") { alert("Vui lòng nhập lý do để giảng viên biết!"); return; }
-
-            // 🔥 QUAN TRỌNG: Gửi lý do lên qua query param 'cancelReason'
-            // Backend cần bắt tham số này và nối vào cột 'reason' hoặc 'note' cũ
-            const url = `http://localhost:8080/api/appointment/${appt.id}/cancel/student?cancelReason=${encodeURIComponent(reason)}`;
-
-            fetch(url, {
+            }).then(res => { if (res.ok) { alert("Đã hủy thành công"); loadData(); } else alert("Lỗi khi hủy."); });
+        } else if (appt.statusCode === 'APPROVED') {
+            const reason = window.prompt("Nhập lý do xin hủy:");
+            if (reason === null || reason.trim() === "") return;
+            fetch(`http://localhost:8080/api/appointment/${appt.id}/cancel/student?cancelReason=${encodeURIComponent(reason)}`, {
                 method: "PUT", headers: { Authorization: `Bearer ${token}` }
-            }).then(res => {
-                if (res.ok) { 
-                    alert("Đã gửi yêu cầu. Lý do hủy đã được cập nhật cho giảng viên."); 
-                    loadData(); 
-                } else {
-                    alert("Có lỗi xảy ra khi gửi yêu cầu.");
-                }
-            });
+            }).then(res => { if (res.ok) { alert("Đã gửi yêu cầu."); loadData(); } else alert("Lỗi gửi yêu cầu."); });
         }
     };
 
-    // --- STYLE BADGES ---
     const getStatusBadge = (code, text) => {
-        let colorClass = "bg-secondary";
-        if (code === 'APPROVED') colorClass = "bg-success";
-        if (code === 'PENDING') colorClass = "bg-warning text-dark";
-        if (code === 'REJECTED') colorClass = "bg-danger";
-        if (code === 'COMPLETED') colorClass = "bg-primary";
-        if (code === 'CANCEL_REQUEST') colorClass = "bg-info text-dark"; 
-
-        return <span className={`badge rounded-pill ${colorClass} px-3 py-2 border border-light shadow-sm`} style={{minWidth: "100px"}}>{text}</span>;
+        const colors = { 
+            APPROVED: "bg-success", 
+            PENDING: "bg-warning text-dark", 
+            REJECTED: "bg-danger", 
+            COMPLETED: "bg-primary", 
+            CANCEL_REQUEST: "bg-info text-dark",
+            CANCELED: "bg-secondary" // Thêm màu cho trạng thái đã hủy
+        };
+        return <span className={`badge rounded-pill ${colors[code] || "bg-secondary"} px-3 py-2 border border-light shadow-sm`} style={{minWidth: "100px"}}>{text}</span>;
     };
-
     const getResultDisplay = (resultCode) => {
         if (!resultCode) return <span className="text-muted small opacity-50">-</span>;
-        let badge = <span className="badge bg-secondary">{resultCode}</span>;
-        if (resultCode === 'SOLVED') badge = <span className="badge bg-success bg-opacity-75 text-white">✅ Đã giải quyết</span>;
-        else if (resultCode === 'UNSOLVED') badge = <span className="badge bg-warning text-dark border">⚠️ Cần theo dõi</span>;
-        else if (resultCode === 'STUDENT_ABSENT') badge = <span className="badge bg-danger">❌ Vắng mặt</span>;
-        else if (resultCode === 'CANCELLED_BY_GV') badge = <span className="badge bg-danger bg-opacity-75">⛔ Hủy bởi GV</span>;
-        return <div className="d-flex flex-column align-items-center">{badge}</div>;
+        const map = { SOLVED: "✅ Đã giải quyết", UNSOLVED: "⚠️ Cần theo dõi", STUDENT_ABSENT: "❌ Vắng mặt", CANCELLED_BY_GV: "⛔ Hủy bởi GV" };
+        return <span className={`badge ${resultCode === 'SOLVED' ? 'bg-success' : 'bg-secondary'}`}>{map[resultCode] || resultCode}</span>;
     };
+
+    // --- DANH SÁCH FILTER ---
+    const STATUS_OPTIONS = [
+        { code: 'PENDING', label: '⏳ Chờ duyệt (Pending)' },
+        { code: 'APPROVED', label: '✅ Đã duyệt (Approved)' },
+        { code: 'COMPLETED', label: '🎉 Hoàn thành (Completed)' },
+        { code: 'REJECTED', label: '⛔ Bị từ chối (Rejected)' },
+        { code: 'CANCEL_REQUEST', label: '📩 Đang xin hủy' },
+        { code: 'CANCELED', label: '❌ Đã hủy (Canceled)' } // Đã thêm mới
+    ];
 
     return (
         <div className="container-fluid px-4 mt-4 font-monospace">
-
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h3 className="fw-bold text-primary mb-1">📋 Lịch Sử Tư Vấn</h3>
@@ -131,96 +203,128 @@ const ConsultationHistory = () => {
                 <button className="btn btn-light shadow-sm text-primary border" onClick={loadData}>🔄 Làm mới</button>
             </div>
 
+            {/* --- THANH CÔNG CỤ (DÙNG REF ĐỂ BẮT SỰ KIỆN CLICK RA NGOÀI) --- */}
+            <div className="card border-0 shadow-sm rounded-4 mb-4 bg-white" style={{zIndex: 10}} ref={dropdownRef}>
+                <div className="card-body p-3">
+                    <div className="row g-3 align-items-center">
+                        
+                        {/* 1. Tìm tên GV */}
+                        <div className="col-md-4">
+                            <div className="input-group">
+                                <span className="input-group-text bg-white border-end-0"><i className="bi bi-search text-muted"></i></span>
+                                <input type="text" className="form-control border-start-0 ps-0" placeholder="Tìm tên giảng viên..." 
+                                    value={searchName} onChange={(e) => setSearchName(e.target.value)} />
+                            </div>
+                        </div>
+
+                        {/* 2. Lọc Trạng thái (MANUAL DROPDOWN) */}
+                        <div className="col-md-3 position-relative">
+                            <div className="dropdown">
+                                <button className="btn btn-white border w-100 text-start d-flex justify-content-between align-items-center" 
+                                    type="button" onClick={() => toggleDropdown('STATUS')}>
+                                    <span className="text-truncate">
+                                        <i className="bi bi-funnel me-2 text-primary"></i> 
+                                        {selectedStatuses.length === 0 ? "Tất cả trạng thái" : `Đã chọn (${selectedStatuses.length})`}
+                                    </span>
+                                    <i className="bi bi-chevron-down small text-muted"></i>
+                                </button>
+                                {/* Menu hiển thị dựa trên State 'activeDropdown' */}
+                                <ul className={`dropdown-menu w-100 p-2 shadow border-0 mt-1 ${activeDropdown === 'STATUS' ? 'show' : ''}`}>
+                                    <li><h6 className="dropdown-header small text-muted text-uppercase">Chọn trạng thái hiển thị</h6></li>
+                                    {STATUS_OPTIONS.map(opt => (
+                                        <li key={opt.code} className="dropdown-item rounded d-flex align-items-center gap-2" 
+                                            onClick={(e) => { e.stopPropagation(); toggleStatus(opt.code); }} style={{cursor: "pointer"}}>
+                                            <input className="form-check-input mt-0" type="checkbox" checked={selectedStatuses.includes(opt.code)} readOnly />
+                                            <span>{opt.label}</span>
+                                        </li>
+                                    ))}
+                                    <li><hr className="dropdown-divider" /></li>
+                                    <li><button className="btn btn-sm btn-light w-100 text-danger" onClick={() => setSelectedStatuses([])}>Xóa chọn</button></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        {/* 3. Lọc Thời gian (MANUAL DROPDOWN) */}
+                        <div className="col-md-3">
+                            <div className="dropdown">
+                                <button className="btn btn-white border w-100 text-start d-flex justify-content-between align-items-center" 
+                                    type="button" onClick={() => toggleDropdown('DATE')}>
+                                    <span className="text-truncate">
+                                        <i className="bi bi-calendar3 me-2 text-success"></i> {dateFilter.label}
+                                    </span>
+                                    <i className="bi bi-chevron-down small text-muted"></i>
+                                </button>
+                                
+                                <ul className={`dropdown-menu shadow border-0 mt-1 ${activeDropdown === 'DATE' ? 'show' : ''}`} style={{minWidth: "260px"}}>
+                                    <li><h6 className="dropdown-header small text-muted">Chọn nhanh</h6></li>
+                                    <li><button className="dropdown-item py-2" onClick={() => handleQuickDateSelect('TODAY')}>Hôm nay</button></li>
+                                    <li><button className="dropdown-item py-2" onClick={() => handleQuickDateSelect('YESTERDAY')}>Hôm qua</button></li>
+                                    <li><button className="dropdown-item py-2" onClick={() => handleQuickDateSelect('LAST_7_DAYS')}>Trong 7 ngày qua</button></li>
+                                    <li><button className="dropdown-item py-2" onClick={() => handleQuickDateSelect('LAST_30_DAYS')}>Trong 30 ngày qua</button></li>
+                                    <li><hr className="dropdown-divider" /></li>
+                                    <li><h6 className="dropdown-header small text-muted">Tùy chọn khác</h6></li>
+                                    <li className="px-3 py-1">
+                                        <label className="form-label small mb-1 text-muted">Theo ngày:</label>
+                                        <input type="date" className="form-control form-control-sm" onChange={handleSpecificDate} />
+                                    </li>
+                                    <li className="px-3 py-1">
+                                        <label className="form-label small mb-1 text-muted">Theo tháng:</label>
+                                        <input type="month" className="form-control form-control-sm" onChange={handleSpecificMonth} />
+                                    </li>
+                                    <li><hr className="dropdown-divider" /></li>
+                                    <li><button className="dropdown-item text-danger py-2 text-center" onClick={() => handleQuickDateSelect('ALL')}>Xem tất cả</button></li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                         <div className="col-md-2 d-grid">
+                            <button className="btn btn-outline-secondary border-0" 
+                                onClick={() => { setSearchName(""); setSelectedStatuses([]); handleQuickDateSelect('ALL'); }}>
+                                <i className="bi bi-arrow-counterclockwise"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* --- BẢNG DỮ LIỆU --- */}
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
                 <div className="table-responsive">
                     <table className="table table-hover table-bordered align-middle mb-0" style={{ minWidth: "1400px" }}>
                         <thead className="bg-light text-secondary">
                             <tr className="text-uppercase small fw-bold text-center">
-                                <th className="py-3" style={{ width: "3%" }}>STT</th>
-                                <th className="py-3 text-start" style={{ width: "12%" }}>Giảng viên</th>
-                                <th className="py-3" style={{ width: "8%" }}>Ngày hẹn</th>
-                                <th className="py-3" style={{ width: "9%" }}>Khung giờ</th>
-                                <th className="py-3" style={{ width: "7%" }}>Hình thức</th>
-                                <th className="py-3" style={{ width: "5%" }}>File</th>
-                                <th className="py-3 text-start" style={{ width: "15%" }}>Chủ đề / Nội dung</th>
-                                <th className="py-3 text-start" style={{ width: "15%" }}>Ghi chú từ GV</th>
-                                <th className="py-3" style={{ width: "9%" }}>Trạng thái</th>
-                                <th className="py-3" style={{ width: "10%" }}>Kết quả</th>
-                                <th className="py-3" style={{ width: "5%" }}>Tác vụ</th>
+                                <th className="py-3">STT</th>
+                                <th className="py-3 text-start">Giảng viên</th>
+                                <th className="py-3">Ngày hẹn</th>
+                                <th className="py-3">Khung giờ</th>
+                                <th className="py-3">Hình thức</th>
+                                <th className="py-3">File</th>
+                                <th className="py-3 text-start">Chủ đề / Nội dung</th>
+                                <th className="py-3 text-start">Ghi chú từ GV</th>
+                                <th className="py-3">Trạng thái</th>
+                                <th className="py-3">Kết quả</th>
+                                <th className="py-3">Tác vụ</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {appointments.length === 0 ? (
-                                <tr><td colSpan={11} className="text-center py-5 text-muted">Bạn chưa có yêu cầu tư vấn nào.</td></tr>
+                            {filteredApps.length === 0 ? (
+                                <tr><td colSpan={11} className="text-center py-5 text-muted">Không tìm thấy dữ liệu phù hợp.</td></tr>
                             ) : (
-                                appointments.map((a, i) => (
+                                filteredApps.map((a, i) => (
                                     <tr key={a.id} style={{ height: "65px" }}>
                                         <td className="text-center fw-bold text-muted">{i + 1}</td>
-                                        
-                                        {/* Tên Giảng viên: Chữ thường, đen */}
-                                        <td className="text-start">
-                                            <Link to={`/student/lecturer-info/${a.lecturerId}`} className="text-dark text-decoration-none hover-text-primary">
-                                                {a.lecturerName}
-                                            </Link>
-                                        </td>
-
-                                        {/* Ngày hẹn: Chữ thường (bỏ fw-medium) */}
+                                        <td className="text-start"><Link to={`/student/lecturer-info/${a.lecturerId}`} className="text-dark text-decoration-none">{a.lecturerName}</Link></td>
                                         <td className="text-center">{formatDate(a.date)}</td>
-                                        
                                         <td className="text-center"><span className="badge bg-light text-dark border">{getDurationDisplay(a.time, a.endTime)}</span></td>
-                                        
-                                        <td className="text-center">
-                                            {a.consultationType === "IN_PERSON"
-                                                ? <span className="badge bg-info bg-opacity-10 text-info border border-info rounded-pill">🏢 Trực tiếp</span>
-                                                : <span className="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill">💻 Online</span>
-                                            }
-                                        </td>
-
-                                        <td className="text-center">
-                                            {a.attachments?.length > 0 ? (
-                                                <div className="d-flex flex-column gap-1 align-items-center">
-                                                    {a.attachments.map(f => (
-                                                        <button key={f.id} className="btn btn-sm btn-link text-decoration-none p-0" onClick={() => handleDownload(f.id, f.fileName)} title={f.fileName}>📎 File</button>
-                                                    ))}
-                                                </div>
-                                            ) : <span className="text-muted small opacity-50">-</span>}
-                                        </td>
-
-                                        {/* Chủ đề: Chữ thường, có Popup */}
-                                        <td className="text-start" style={{cursor: "pointer"}} onClick={() => openDetailModal("Nội dung tư vấn", a.reason)}>
-                                            <div className="text-dark text-truncate-2" style={{ maxWidth: "200px", maxHeight: "3em", overflow: "hidden" }}>
-                                                {a.reason || "Không có nội dung"}
-                                            </div>
-                                            {(a.reason && a.reason.length > 50) && <small className="text-primary fst-italic" style={{fontSize: "0.7rem"}}>Xem thêm...</small>}
-                                        </td>
-
-                                        {/* Ghi chú GV */}
-                                        <td className="text-start" style={{cursor: "pointer"}} onClick={() => openDetailModal("Ghi chú từ Giảng viên", a.feedbackNote)}>
-                                            <div className="small text-muted fst-italic text-truncate-2" style={{ maxWidth: "200px", maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap" }}>
-                                                {a.feedbackNote || <span className="opacity-50">--</span>}
-                                            </div>
-                                            {(a.feedbackNote && a.feedbackNote.length > 50) && <small className="text-primary fst-italic" style={{fontSize: "0.7rem"}}>Xem thêm...</small>}
-                                        </td>
-
+                                        <td className="text-center">{a.consultationType === "IN_PERSON" ? "🏢 Trực tiếp" : "💻 Online"}</td>
+                                        <td className="text-center">{a.attachments?.length > 0 ? "📎 Có file" : "-"}</td>
+                                        <td className="text-start cursor-pointer" onClick={() => openDetailModal("Nội dung", a.reason)}><div className="text-truncate" style={{maxWidth: "200px"}}>{a.reason}</div></td>
+                                        <td className="text-start cursor-pointer" onClick={() => openDetailModal("Ghi chú", a.feedbackNote)}><div className="text-truncate" style={{maxWidth: "200px"}}>{a.feedbackNote || "-"}</div></td>
                                         <td className="text-center">{getStatusBadge(a.statusCode, a.statusDescription)}</td>
                                         <td className="text-center">{getResultDisplay(a.consultationResult)}</td>
-
                                         <td className="text-center">
-                                            {a.statusCode === 'PENDING' && (
-                                                <button className="btn btn-outline-danger btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center mx-auto"
-                                                    style={{ width: "28px", height: "28px" }} title="Hủy yêu cầu" onClick={() => handleCancel(a)}>
-                                                    ✕
-                                                </button>
-                                            )}
-                                            {a.statusCode === 'APPROVED' && (
-                                                <button className="btn btn-outline-warning text-dark btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center mx-auto"
-                                                    style={{ width: "28px", height: "28px" }} title="Xin hủy lịch (Gửi yêu cầu)" onClick={() => handleCancel(a)}>
-                                                    <i className="bi bi-calendar-x"></i>
-                                                </button>
-                                            )}
-                                            {['COMPLETED', 'REJECTED', 'CANCELED', 'CANCEL_REQUEST'].includes(a.statusCode) && (
-                                                <span className="text-muted opacity-25"><i className="bi bi-lock-fill"></i></span>
-                                            )}
+                                            {a.statusCode === 'PENDING' && <button className="btn btn-outline-danger btn-sm rounded-circle" style={{ width: "28px", height: "28px" }} onClick={() => handleCancel(a)}>✕</button>}
+                                            {a.statusCode === 'APPROVED' && <button className="btn btn-outline-warning text-dark btn-sm rounded-circle" style={{ width: "28px", height: "28px" }} onClick={() => handleCancel(a)}><i className="bi bi-calendar-x"></i></button>}
                                         </td>
                                     </tr>
                                 ))
@@ -235,26 +339,15 @@ const ConsultationHistory = () => {
                 <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} tabIndex="-1">
                     <div className="modal-dialog modal-dialog-centered">
                         <div className="modal-content rounded-4 shadow border-0">
-                            <div className="modal-header border-bottom-0">
-                                <h5 className="modal-title fw-bold text-primary">{viewModal.title}</h5>
-                                <button type="button" className="btn-close" onClick={() => setViewModal({ ...viewModal, show: false })}></button>
-                            </div>
-                            <div className="modal-body">
-                                <div className="p-3 bg-light rounded" style={{ whiteSpace: "pre-wrap", maxHeight: "400px", overflowY: "auto" }}>
-                                    {viewModal.content}
-                                </div>
-                            </div>
-                            <div className="modal-footer border-top-0">
-                                <button type="button" className="btn btn-secondary rounded-pill px-4" onClick={() => setViewModal({ ...viewModal, show: false })}>Đóng</button>
-                            </div>
+                            <div className="modal-header border-bottom-0"><h5 className="modal-title text-primary">{viewModal.title}</h5><button className="btn-close" onClick={() => setViewModal({ ...viewModal, show: false })}></button></div>
+                            <div className="modal-body"><div className="p-3 bg-light rounded" style={{ whiteSpace: "pre-wrap" }}>{viewModal.content}</div></div>
+                            <div className="modal-footer border-top-0"><button className="btn btn-secondary rounded-pill px-4" onClick={() => setViewModal({ ...viewModal, show: false })}>Đóng</button></div>
                         </div>
                     </div>
                 </div>
             )}
-
-            <div className="text-center mt-4 text-muted small">Hiển thị {appointments.length} kết quả gần nhất.</div>
+            <div className="text-center mt-4 text-muted small">Hiển thị {filteredApps.length} kết quả.</div>
         </div>
     );
 };
-
 export default ConsultationHistory;
