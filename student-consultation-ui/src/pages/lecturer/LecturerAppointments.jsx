@@ -1,26 +1,45 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom"; 
 import appointmentApi from "../../api/appointmentApi";
 import axios from "axios";
 
 export default function LecturerAppointments() {
+    const location = useLocation();
 
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // --- STATES CHO FILTER & PAGINATION ---
     const [searchTerm, setSearchTerm] = useState("");
-    const [filterDate, setFilterDate] = useState("");
-    const [selectedStatuses, setSelectedStatuses] = useState(["PENDING", "APPROVED", "CANCEL_REQUEST"]);
+    
+    // ✅ KHỞI TẠO NGÀY LỌC TỪ DỮ LIỆU GỬI SANG (Nếu có)
+    const [filterDate, setFilterDate] = useState(location.state?.date || "");
+    
+    const [selectedStatuses, setSelectedStatuses] = useState(
+        location.state?.status ? [location.state.status] : ["PENDING", "APPROVED", "CANCEL_REQUEST"]
+    );
+
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+
+    // ✅ USEEFFECT: Cập nhật lại filter nếu location thay đổi (trường hợp user click liên tục)
+    useEffect(() => {
+        if (location.state?.searchTerm) {
+            setSearchTerm(location.state.searchTerm);
+        }
+        if (location.state?.date) {
+            setFilterDate(location.state.date);
+        }
+        if (location.state?.status) {
+            setSelectedStatuses([location.state.status]);
+        }
+    }, [location.state]);
 
     // --- STATE CHO MODAL XEM CHI TIẾT ---
     const [viewModal, setViewModal] = useState({ show: false, title: "", content: "" });
 
-    // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 15;
 
-    // Danh sách trạng thái
     const statusOptions = [
         { code: "PENDING", label: "Chờ duyệt", color: "text-warning" },
         { code: "APPROVED", label: "Đã duyệt", color: "text-success" },
@@ -37,28 +56,19 @@ export default function LecturerAppointments() {
         return `${day}/${month}/${year}`;
     };
 
-    // ✅ ĐÃ SỬA: Ưu tiên dùng endTime từ DB, nếu không có mới cộng 30p
     const getDurationDisplay = (startTime, endTime) => {
         if (!startTime) return "-";
-        
-        // Cắt giây (08:00:00 -> 08:00)
         const start = startTime.slice(0, 5);
-
-        // Trường hợp 1: Có endTime từ DB
         if (endTime) {
             const end = endTime.slice(0, 5);
             return `${start} - ${end}`;
         }
-
-        // Trường hợp 2: Không có endTime => Tự cộng 30 phút
         const [h, m] = startTime.split(':').map(Number);
         const date = new Date(); 
         date.setHours(h, m, 0, 0); 
         date.setMinutes(date.getMinutes() + 30);
-        
         const endH = date.getHours().toString().padStart(2, '0');
         const endM = date.getMinutes().toString().padStart(2, '0');
-        
         return `${start} - ${endH}:${endM}`;
     };
 
@@ -99,8 +109,6 @@ export default function LecturerAppointments() {
         try {
             setLoading(true);
             const res = await appointmentApi.getLecturerAppointments();
-            console.log("Dữ liệu API trả về:", res.data);
-            // Sort: Ngày gần nhất lên đầu
             const sorted = res.data.sort((a, b) => 
                 new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`)
             );
@@ -145,7 +153,6 @@ export default function LecturerAppointments() {
         catch (error) { alert("Lỗi: " + (error.response?.data || "Lỗi hệ thống")); }
     };
 
-    // Hàm mở modal xem chi tiết
     const openDetailModal = (title, content) => {
         setViewModal({ show: true, title, content: content || "Không có nội dung" });
     };
@@ -154,6 +161,7 @@ export default function LecturerAppointments() {
     const filteredAppointments = appointments.filter(appt => {
         const term = searchTerm.toLowerCase();
         const matchSearch = (appt.studentName?.toLowerCase() || "").includes(term) || (appt.studentCode?.toLowerCase() || "").includes(term);
+        // ✅ LOGIC LỌC NGÀY ĐÃ CÓ SẴN (Chỉ cần setFilterDate là tự chạy)
         const matchDate = filterDate ? appt.date === filterDate : true;
         const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(appt.statusCode);
         return matchSearch && matchDate && matchStatus;
@@ -170,7 +178,6 @@ export default function LecturerAppointments() {
 
     return (
         <div className="container-fluid px-4 mt-4 font-monospace">
-            {/* --- HEADER & TOOLBAR (GIỮ NGUYÊN) --- */}
             <div className="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-3">
                 <div><h3 className="fw-bold text-primary mb-1">📅 Quản Lý Lịch Hẹn</h3><p className="text-muted mb-0">Danh sách yêu cầu tư vấn</p></div>
                 <div className="d-flex flex-wrap gap-2 align-items-start">
@@ -178,6 +185,7 @@ export default function LecturerAppointments() {
                         <i className="bi bi-search position-absolute text-muted" style={{ top: "50%", left: "12px", transform: "translateY(-50%)", fontSize: "16px", pointerEvents: "none" }}></i>
                         <input type="text" className="form-control ps-5" placeholder="Tên, MSSV..." style={{ height: "38px", borderRadius: "8px" }} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
                     </div>
+                    {/* ✅ Ô INPUT DATE NÀY SẼ TỰ ĐIỀN NẾU DASHBOARD GỬI DATE SANG */}
                     <input type="date" className="form-control shadow-sm" style={{ width: "150px", height: "38px" }} value={filterDate} onChange={e => { setFilterDate(e.target.value); setCurrentPage(1); }} />
                     <div className="position-relative">
                         <button className="btn btn-white border shadow-sm dropdown-toggle d-flex align-items-center gap-2" style={{ height: "38px" }} onClick={() => setShowStatusDropdown(!showStatusDropdown)}>
@@ -199,7 +207,6 @@ export default function LecturerAppointments() {
                 </div>
             </div>
 
-            {/* --- TABLE --- */}
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-3">
                 <div className="table-responsive">
                     <table className="table table-hover table-bordered align-middle mb-0" style={{ minWidth: "1850px" }}>
@@ -214,10 +221,8 @@ export default function LecturerAppointments() {
                                 <th className="py-3" style={{ width: "8%" }}>Giờ</th>
                                 <th className="py-3" style={{ width: "7%" }}>Hình thức</th>
                                 <th className="py-3" style={{ width: "4%" }}>File</th>
-                                
                                 <th className="py-3 text-start" style={{ width: "14%" }}>Lý do</th>
                                 <th className="py-3 text-start" style={{ width: "14%" }}>Ghi chú / Lời nhắn</th>
-                                
                                 <th className="py-3" style={{ width: "8%" }}>Trạng thái</th>
                                 <th className="py-3" style={{ width: "8%" }}>Kết quả</th>
                                 <th className="py-3" style={{ width: "7%" }}>Tác vụ</th>
@@ -235,10 +240,7 @@ export default function LecturerAppointments() {
                                         <td className="text-center small">{appt.studentPhone || "--"}</td>
                                         <td className="text-start small text-truncate" style={{ maxWidth: "150px" }} title={appt.studentEmail}>{appt.studentEmail}</td>
                                         <td className="text-center fw-medium">{formatDate(appt.date)}</td>
-                                        
-                                        {/* ✅ SỬA CHỖ NÀY: Truyền cả endTime vào hàm getDurationDisplay */}
                                         <td className="text-center"><span className="badge bg-white text-dark border px-2 py-1 shadow-sm font-monospace">{getDurationDisplay(appt.time, appt.endTime)}</span></td>
-                                        
                                         <td className="text-center">
                                             {appt.consultationType === "IN_PERSON" ? <span className="badge bg-info bg-opacity-10 text-info border border-info rounded-pill">🏢 Trực tiếp</span> : <span className="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill">💻 Online</span>}
                                         </td>
@@ -251,21 +253,14 @@ export default function LecturerAppointments() {
                                                 </div>
                                             ) : <span className="text-muted small opacity-50">-</span>}
                                         </td>
-
                                         <td className="text-start" style={{cursor: "pointer"}} onClick={() => openDetailModal("Chi tiết Lý do", appt.reason)}>
-                                            <div className="text-truncate-2" style={{ maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap", fontSize: "0.9rem" }}>
-                                                {appt.reason || "Không có nội dung"}
-                                            </div>
+                                            <div className="text-truncate-2" style={{ maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap", fontSize: "0.9rem" }}>{appt.reason || "Không có nội dung"}</div>
                                             {(appt.reason && appt.reason.length > 50) && <small className="text-primary fst-italic" style={{fontSize: "0.7rem"}}>Xem thêm...</small>}
                                         </td>
-
                                         <td className="text-start" style={{cursor: "pointer"}} onClick={() => openDetailModal("Chi tiết Ghi chú / Lời nhắn", appt.feedbackNote)}>
-                                            <div className="small text-muted fst-italic text-truncate-2" style={{ maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap" }}>
-                                                {appt.feedbackNote || <span className="opacity-25">--</span>}
-                                            </div>
+                                            <div className="small text-muted fst-italic text-truncate-2" style={{ maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap" }}>{appt.feedbackNote || <span className="opacity-25">--</span>}</div>
                                             {(appt.feedbackNote && appt.feedbackNote.length > 50) && <small className="text-primary fst-italic" style={{fontSize: "0.7rem"}}>Xem thêm...</small>}
                                         </td>
-
                                         <td className="text-center">{getStatusBadge(appt.statusCode, appt.statusDescription)}</td>
                                         <td className="text-center">{getResultDisplay(appt.consultationResult)}</td>
                                         <td className="text-center">
@@ -297,7 +292,6 @@ export default function LecturerAppointments() {
                 </div>
             </div>
 
-            {/* --- PAGINATION --- */}
             {filteredAppointments.length > 0 && (
                 <div className="d-flex justify-content-between align-items-center mb-5">
                     <div className="text-muted small">Hiển thị {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, filteredAppointments.length)} / {filteredAppointments.length} bản ghi</div>
@@ -313,7 +307,6 @@ export default function LecturerAppointments() {
                 </div>
             )}
 
-            {/* --- MODAL XEM CHI TIẾT --- */}
             {viewModal.show && (
                 <>
                     <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} tabIndex="-1">

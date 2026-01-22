@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom"; // Import Link
+import { Link } from "react-router-dom"; 
 import axios from "axios";
 
 export default function LecturerDashboard() {
@@ -7,18 +7,14 @@ export default function LecturerDashboard() {
     
     // State lưu dữ liệu tổng quan
     const [summary, setSummary] = useState({
-        pendingCount: 0,      // Số đơn chờ duyệt
-        todayCount: 0,        // Số lịch hẹn hôm nay
-        completedMonth: 0     // Số lịch đã hoàn thành
+        pendingCount: 0,      
+        todayCount: 0,        
+        completedMonth: 0     
     });
 
-    // State lưu danh sách lịch hẹn HÔM NAY
     const [todaySchedule, setTodaySchedule] = useState([]);
-
-    // ✅ STATE MỚI: Lưu danh sách yêu cầu hủy
     const [cancelRequests, setCancelRequests] = useState([]);
 
-    // Lấy ngày hiện tại (YYYY-MM-DD)
     const getTodayString = () => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -35,16 +31,13 @@ export default function LecturerDashboard() {
                 const allAppointments = res.data;
                 const todayStr = getTodayString();
 
-                // 1. Tính toán số liệu thống kê
                 const pending = allAppointments.filter(a => a.statusCode === 'PENDING').length;
                 const completed = allAppointments.filter(a => a.statusCode === 'COMPLETED').length;
                 
-                // 2. Lọc ra lịch hẹn của RIÊNG HÔM NAY (Đã duyệt)
                 const todayList = allAppointments.filter(a => 
                     a.date === todayStr && a.statusCode === 'APPROVED'
                 ).sort((a, b) => a.time.localeCompare(b.time));
 
-                // ✅ 3. LỌC DANH SÁCH YÊU CẦU HỦY
                 const cancelList = allAppointments.filter(a => a.statusCode === 'CANCEL_REQUEST');
 
                 setSummary({
@@ -54,7 +47,7 @@ export default function LecturerDashboard() {
                 });
 
                 setTodaySchedule(todayList);
-                setCancelRequests(cancelList); // Lưu vào state
+                setCancelRequests(cancelList); 
 
             } catch (error) {
                 console.error("Lỗi tải dashboard", error);
@@ -85,7 +78,6 @@ export default function LecturerDashboard() {
 
             {/* --- KHỐI THỐNG KÊ NHANH --- */}
             <div className="row mb-4">
-                {/* Card 1: Việc cần làm gấp */}
                 <div className="col-md-4 mb-3">
                     <div className="card border-0 shadow-sm h-100 bg-warning bg-opacity-10 border-start border-warning border-4">
                         <div className="card-body">
@@ -94,14 +86,17 @@ export default function LecturerDashboard() {
                                 <h2 className="fw-bold text-warning mb-0">{summary.pendingCount}</h2>
                                 <i className="bi bi-hourglass-split fs-1 text-warning opacity-50"></i>
                             </div>
-                            <Link to="/lecturer/appointments" className="small text-decoration-none fw-bold text-warning mt-2 d-inline-block">
+                            <Link 
+                                to="/lecturer/appointments" 
+                                state={{ status: 'PENDING' }}
+                                className="small text-decoration-none fw-bold text-warning mt-2 d-inline-block"
+                            >
                                 Xử lý ngay &rarr;
                             </Link>
                         </div>
                     </div>
                 </div>
 
-                {/* Card 2: Lịch hôm nay */}
                 <div className="col-md-4 mb-3">
                     <div className="card border-0 shadow-sm h-100 bg-primary bg-opacity-10 border-start border-primary border-4">
                         <div className="card-body">
@@ -115,7 +110,6 @@ export default function LecturerDashboard() {
                     </div>
                 </div>
 
-                {/* Card 3: Tổng hoàn thành */}
                 <div className="col-md-4 mb-3">
                     <div className="card border-0 shadow-sm h-100 bg-success bg-opacity-10 border-start border-success border-4">
                         <div className="card-body">
@@ -133,10 +127,9 @@ export default function LecturerDashboard() {
             </div>
 
             <div className="row">
-                {/* --- CỘT TRÁI: THÔNG BÁO & LỊCH TRÌNH --- */}
                 <div className="col-lg-8 mb-4">
                     
-                    {/* ✅ PHẦN MỚI: DANH SÁCH YÊU CẦU HỦY (Chỉ hiện khi có yêu cầu) */}
+                    {/* DANH SÁCH YÊU CẦU HỦY */}
                     {cancelRequests.length > 0 && (
                         <div className="card border-0 shadow-sm mb-4 border-start border-danger border-4 animate__animated animate__pulse">
                             <div className="card-header bg-danger bg-opacity-10 border-0 py-3">
@@ -150,6 +143,8 @@ export default function LecturerDashboard() {
                                     <Link 
                                         key={idx} 
                                         to="/lecturer/appointments" 
+                                        // ✅ CŨNG LỌC CẢ NGÀY CỦA YÊU CẦU HỦY CHO CHÍNH XÁC
+                                        state={{ searchTerm: req.studentCode, status: 'CANCEL_REQUEST', date: req.date }}
                                         className="list-group-item list-group-item-action px-4 py-3 d-flex align-items-center justify-content-between"
                                     >
                                         <div>
@@ -178,10 +173,11 @@ export default function LecturerDashboard() {
                             ) : (
                                 <div className="list-group list-group-flush">
                                     {todaySchedule.map((appt, idx) => (
-                                        // ✅ ĐÃ SỬA: Dùng thẻ Link và class list-group-item-action để click được
                                         <Link 
                                             key={idx} 
                                             to="/lecturer/appointments"
+                                            // ✅ SỬA: Truyền thêm date: appt.date để lọc chính xác ngày hôm nay
+                                            state={{ searchTerm: appt.studentCode, status: 'APPROVED', date: appt.date }}
                                             className="list-group-item list-group-item-action px-4 py-3 d-flex align-items-center justify-content-between"
                                             title="Bấm để xem chi tiết và quản lý"
                                         >
@@ -212,7 +208,6 @@ export default function LecturerDashboard() {
                     </div>
                 </div>
 
-                {/* --- CỘT PHẢI: MENU NHANH --- */}
                 <div className="col-lg-4 mb-4">
                     <div className="card border-0 shadow-sm mb-4">
                         <div className="card-header bg-white border-0 py-3">
