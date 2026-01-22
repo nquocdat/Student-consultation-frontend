@@ -143,8 +143,8 @@ export default function LecturerDashboard() {
                                     <Link 
                                         key={idx} 
                                         to="/lecturer/appointments" 
-                                        // ✅ CŨNG LỌC CẢ NGÀY CỦA YÊU CẦU HỦY CHO CHÍNH XÁC
-                                        state={{ searchTerm: req.studentCode, status: 'CANCEL_REQUEST', date: req.date }}
+                                        // ✅ CHỈ GỬI MÃ SV VÀ TRẠNG THÁI (KHÔNG GỬI NGÀY)
+                                        state={{ searchTerm: req.studentCode, status: 'CANCEL_REQUEST' }}
                                         className="list-group-item list-group-item-action px-4 py-3 d-flex align-items-center justify-content-between"
                                     >
                                         <div>
@@ -176,7 +176,7 @@ export default function LecturerDashboard() {
                                         <Link 
                                             key={idx} 
                                             to="/lecturer/appointments"
-                                            // ✅ SỬA: Truyền thêm date: appt.date để lọc chính xác ngày hôm nay
+                                            // ✅ LỊCH HÔM NAY THÌ VẪN GỬI NGÀY ĐỂ LỌC CHÍNH XÁC
                                             state={{ searchTerm: appt.studentCode, status: 'APPROVED', date: appt.date }}
                                             className="list-group-item list-group-item-action px-4 py-3 d-flex align-items-center justify-content-between"
                                             title="Bấm để xem chi tiết và quản lý"

@@ -9,10 +9,7 @@ export default function LecturerAppointments() {
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // --- STATES CHO FILTER & PAGINATION ---
     const [searchTerm, setSearchTerm] = useState("");
-    
-    // ✅ KHỞI TẠO NGÀY LỌC TỪ DỮ LIỆU GỬI SANG (Nếu có)
     const [filterDate, setFilterDate] = useState(location.state?.date || "");
     
     const [selectedStatuses, setSelectedStatuses] = useState(
@@ -21,20 +18,29 @@ export default function LecturerAppointments() {
 
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
-    // ✅ USEEFFECT: Cập nhật lại filter nếu location thay đổi (trường hợp user click liên tục)
+    // ✅ SỬA USEEFFECT: Xử lý logic lọc thông minh
     useEffect(() => {
-        if (location.state?.searchTerm) {
-            setSearchTerm(location.state.searchTerm);
-        }
-        if (location.state?.date) {
-            setFilterDate(location.state.date);
-        }
-        if (location.state?.status) {
-            setSelectedStatuses([location.state.status]);
+        if (location.state) {
+            // 1. Luôn cập nhật ô tìm kiếm nếu có
+            if (location.state.searchTerm) {
+                setSearchTerm(location.state.searchTerm);
+            }
+            // 2. Luôn cập nhật trạng thái nếu có
+            if (location.state.status) {
+                setSelectedStatuses([location.state.status]);
+            }
+            
+            // 3. Xử lý ngày:
+            // - Nếu có ngày (Lịch hôm nay): Set ngày
+            // - Nếu KHÔNG có ngày (Yêu cầu hủy): Xóa bộ lọc ngày để hiện tất cả
+            if (location.state.date) {
+                setFilterDate(location.state.date);
+            } else {
+                setFilterDate(""); // Reset về rỗng để tìm toàn bộ
+            }
         }
     }, [location.state]);
 
-    // --- STATE CHO MODAL XEM CHI TIẾT ---
     const [viewModal, setViewModal] = useState({ show: false, title: "", content: "" });
 
     const [currentPage, setCurrentPage] = useState(1);
@@ -49,7 +55,6 @@ export default function LecturerAppointments() {
         { code: "CANCELED", label: "Đã hủy", color: "text-secondary" }
     ];
 
-    // ================= HELPER FUNCTIONS =================
     const formatDate = (dateString) => {
         if (!dateString) return "";
         const [year, month, day] = dateString.split("-");
@@ -91,7 +96,6 @@ export default function LecturerAppointments() {
         return <span className="badge bg-secondary">{resultCode}</span>;
     };
 
-    // ================= API CALLS =================
     const downloadAttachment = async (appointmentId, file) => {
         try {
             const token = localStorage.getItem("token");
@@ -119,7 +123,6 @@ export default function LecturerAppointments() {
 
     useEffect(() => { loadAppointments(); }, []);
 
-    // ================= ACTION HANDLERS =================
     const handleAction = async (actionFn, id, confirmMsg) => {
         if (!actionFn || typeof actionFn !== 'function') { alert("Lỗi: Hàm API sai tên!"); return; }
         if (window.confirm(confirmMsg)) {
@@ -157,11 +160,9 @@ export default function LecturerAppointments() {
         setViewModal({ show: true, title, content: content || "Không có nội dung" });
     };
 
-    // ================= FILTER & PAGINATION =================
     const filteredAppointments = appointments.filter(appt => {
         const term = searchTerm.toLowerCase();
         const matchSearch = (appt.studentName?.toLowerCase() || "").includes(term) || (appt.studentCode?.toLowerCase() || "").includes(term);
-        // ✅ LOGIC LỌC NGÀY ĐÃ CÓ SẴN (Chỉ cần setFilterDate là tự chạy)
         const matchDate = filterDate ? appt.date === filterDate : true;
         const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(appt.statusCode);
         return matchSearch && matchDate && matchStatus;
@@ -185,7 +186,6 @@ export default function LecturerAppointments() {
                         <i className="bi bi-search position-absolute text-muted" style={{ top: "50%", left: "12px", transform: "translateY(-50%)", fontSize: "16px", pointerEvents: "none" }}></i>
                         <input type="text" className="form-control ps-5" placeholder="Tên, MSSV..." style={{ height: "38px", borderRadius: "8px" }} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
                     </div>
-                    {/* ✅ Ô INPUT DATE NÀY SẼ TỰ ĐIỀN NẾU DASHBOARD GỬI DATE SANG */}
                     <input type="date" className="form-control shadow-sm" style={{ width: "150px", height: "38px" }} value={filterDate} onChange={e => { setFilterDate(e.target.value); setCurrentPage(1); }} />
                     <div className="position-relative">
                         <button className="btn btn-white border shadow-sm dropdown-toggle d-flex align-items-center gap-2" style={{ height: "38px" }} onClick={() => setShowStatusDropdown(!showStatusDropdown)}>
