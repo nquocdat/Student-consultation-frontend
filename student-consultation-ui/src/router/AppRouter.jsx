@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import StudentLayout from "../components/StudentLayout";
+import StudentLayout from "../components/student/StudentLayout";
 import Login from "../pages/login/Login";
 
 // 👇 1. IMPORT 2 TRANG MỚI BẠN VỪA TẠO

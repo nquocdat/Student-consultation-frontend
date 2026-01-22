@@ -5,7 +5,7 @@ import Login from "./pages/login/Login";
 import CreateConsultation from "./pages/student/CreateConsultation";
 import ConsultationHistory from "./pages/student/ConsultationHistory";
 
-import StudentLayout from "./components/StudentLayout";
+import StudentLayout from "./components/student/StudentLayout";
 import LecturerAppointments from "./pages/lecturer/LecturerAppointments";
 import LecturerLayout from "./components/lecturer/LecturerLayout";
 import LecturerDashboard from "./pages/lecturer/LecturerDashboard";
@@ -15,6 +15,9 @@ import ForgotPassword from "./components/ForgotPassword";
 import LecturerDetail from "./pages/lecturer/LecturerDetail";
 import LecturerSchedule from "./pages/lecturer/LecturerSchedule";
 import LecturerStatistics from "./pages/lecturer/LecturerStatistics";
+import StudentProcedureCatalog from "./components/student/StudentProcedureCatalog";
+import StudentProcedureCreate from "./components/student/StudentProcedureCreate";
+import StudentProcedureHistory from "./components/student/StudentProcedureHistory"; 
 
 
 
@@ -32,20 +35,24 @@ function App() {
         {/* STUDENT - PHẢI QUA LAYOUT                               */}
         {/* ======================================================= */}
         <Route path="/student" element={<StudentLayout />}>
-          
+
           {/* 👇 1. MENU: Tạo yêu cầu tư vấn */}
           <Route path="create-request" element={<CreateConsultation />} />
 
           {/* 👇 2. MENU: Xem kết quả xử lý */}
           <Route path="history" element={<ConsultationHistory />} />
-          
+
           {/* Mặc định: Nếu vào /student thì chuyển hướng luôn sang trang Tạo yêu cầu */}
           <Route index element={<Navigate to="create-request" replace />} />
           {/* 👇 THÊM ROUTE PROFILE */}
           <Route path="profile" element={<StudentProfile />} />
           <Route path="lecturer-info/:id" element={<LecturerDetail />} />
-           
-          
+
+          <Route path="procedures/catalog" element={<StudentProcedureCatalog />} />
+          <Route path="procedures/create" element={<StudentProcedureCreate />} />
+          <Route path="procedures/history" element={<StudentProcedureHistory />} />
+
+
         </Route>
 
         {/* ======================================================= */}
@@ -54,11 +61,11 @@ function App() {
         <Route path="/lecturer" element={<LecturerLayout />}>
           <Route path="dashboard" element={<LecturerDashboard />} />
           <Route path="appointments" element={<LecturerAppointments />} />
-           <Route path="profile" element={<LecturerProfile />} />
-           <Route path="schedule" element={<LecturerSchedule />} />
-           <Route path="statistics" element={<LecturerStatistics />} />
+          <Route path="profile" element={<LecturerProfile />} />
+          <Route path="schedule" element={<LecturerSchedule />} />
+          <Route path="statistics" element={<LecturerStatistics />} />
 
-          
+
         </Route>
       </Routes>
     </BrowserRouter>
