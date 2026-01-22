@@ -14,6 +14,7 @@ import StudentProfile from "./pages/student/StudentProfile";
 import ForgotPassword from "./components/ForgotPassword";
 import LecturerDetail from "./pages/lecturer/LecturerDetail";
 import LecturerSchedule from "./pages/lecturer/LecturerSchedule";
+import LecturerStatistics from "./pages/lecturer/LecturerStatistics";
 
 
 
@@ -55,6 +56,7 @@ function App() {
           <Route path="appointments" element={<LecturerAppointments />} />
            <Route path="profile" element={<LecturerProfile />} />
            <Route path="schedule" element={<LecturerSchedule />} />
+           <Route path="statistics" element={<LecturerStatistics />} />
 
           
         </Route>

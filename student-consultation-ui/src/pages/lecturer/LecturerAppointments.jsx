@@ -13,7 +13,7 @@ export default function LecturerAppointments() {
     const [selectedStatuses, setSelectedStatuses] = useState(["PENDING", "APPROVED", "CANCEL_REQUEST"]);
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
-    // --- STATE CHO MODAL XEM CHI TIẾT (MỚI THÊM) ---
+    // --- STATE CHO MODAL XEM CHI TIẾT ---
     const [viewModal, setViewModal] = useState({ show: false, title: "", content: "" });
 
     // Pagination
@@ -37,12 +37,29 @@ export default function LecturerAppointments() {
         return `${day}/${month}/${year}`;
     };
 
-    const getDurationDisplay = (startTime) => {
+    // ✅ ĐÃ SỬA: Ưu tiên dùng endTime từ DB, nếu không có mới cộng 30p
+    const getDurationDisplay = (startTime, endTime) => {
         if (!startTime) return "-";
+        
+        // Cắt giây (08:00:00 -> 08:00)
+        const start = startTime.slice(0, 5);
+
+        // Trường hợp 1: Có endTime từ DB
+        if (endTime) {
+            const end = endTime.slice(0, 5);
+            return `${start} - ${end}`;
+        }
+
+        // Trường hợp 2: Không có endTime => Tự cộng 30 phút
         const [h, m] = startTime.split(':').map(Number);
-        const date = new Date(); date.setHours(h, m, 0, 0); date.setMinutes(date.getMinutes() + 30);
-        const end = `${(date.getHours() < 10 ? '0' : '') + date.getHours()}:${(date.getMinutes() < 10 ? '0' : '') + date.getMinutes()}`;
-        return `${startTime.slice(0, 5)} - ${end}`;
+        const date = new Date(); 
+        date.setHours(h, m, 0, 0); 
+        date.setMinutes(date.getMinutes() + 30);
+        
+        const endH = date.getHours().toString().padStart(2, '0');
+        const endM = date.getMinutes().toString().padStart(2, '0');
+        
+        return `${start} - ${endH}:${endM}`;
     };
 
     const getStatusBadge = (code, text) => {
@@ -82,6 +99,7 @@ export default function LecturerAppointments() {
         try {
             setLoading(true);
             const res = await appointmentApi.getLecturerAppointments();
+            console.log("Dữ liệu API trả về:", res.data);
             // Sort: Ngày gần nhất lên đầu
             const sorted = res.data.sort((a, b) => 
                 new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`)
@@ -197,7 +215,6 @@ export default function LecturerAppointments() {
                                 <th className="py-3" style={{ width: "7%" }}>Hình thức</th>
                                 <th className="py-3" style={{ width: "4%" }}>File</th>
                                 
-                                {/* ✅ ĐÃ TĂNG KÍCH THƯỚC CỘT LÊN 14% */}
                                 <th className="py-3 text-start" style={{ width: "14%" }}>Lý do</th>
                                 <th className="py-3 text-start" style={{ width: "14%" }}>Ghi chú / Lời nhắn</th>
                                 
@@ -218,7 +235,10 @@ export default function LecturerAppointments() {
                                         <td className="text-center small">{appt.studentPhone || "--"}</td>
                                         <td className="text-start small text-truncate" style={{ maxWidth: "150px" }} title={appt.studentEmail}>{appt.studentEmail}</td>
                                         <td className="text-center fw-medium">{formatDate(appt.date)}</td>
-                                        <td className="text-center"><span className="badge bg-white text-dark border px-2 py-1 shadow-sm font-monospace">{getDurationDisplay(appt.time)}</span></td>
+                                        
+                                        {/* ✅ SỬA CHỖ NÀY: Truyền cả endTime vào hàm getDurationDisplay */}
+                                        <td className="text-center"><span className="badge bg-white text-dark border px-2 py-1 shadow-sm font-monospace">{getDurationDisplay(appt.time, appt.endTime)}</span></td>
+                                        
                                         <td className="text-center">
                                             {appt.consultationType === "IN_PERSON" ? <span className="badge bg-info bg-opacity-10 text-info border border-info rounded-pill">🏢 Trực tiếp</span> : <span className="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill">💻 Online</span>}
                                         </td>
@@ -232,16 +252,13 @@ export default function LecturerAppointments() {
                                             ) : <span className="text-muted small opacity-50">-</span>}
                                         </td>
 
-                                        {/* ✅ CỘT LÝ DO: Bấm vào để xem chi tiết */}
                                         <td className="text-start" style={{cursor: "pointer"}} onClick={() => openDetailModal("Chi tiết Lý do", appt.reason)}>
                                             <div className="text-truncate-2" style={{ maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap", fontSize: "0.9rem" }}>
                                                 {appt.reason || "Không có nội dung"}
                                             </div>
-                                            {/* Dấu hiệu cho biết có thể bấm vào */}
                                             {(appt.reason && appt.reason.length > 50) && <small className="text-primary fst-italic" style={{fontSize: "0.7rem"}}>Xem thêm...</small>}
                                         </td>
 
-                                        {/* ✅ CỘT GHI CHÚ: Bấm vào để xem chi tiết */}
                                         <td className="text-start" style={{cursor: "pointer"}} onClick={() => openDetailModal("Chi tiết Ghi chú / Lời nhắn", appt.feedbackNote)}>
                                             <div className="small text-muted fst-italic text-truncate-2" style={{ maxHeight: "3em", overflow: "hidden", whiteSpace: "pre-wrap" }}>
                                                 {appt.feedbackNote || <span className="opacity-25">--</span>}
@@ -296,7 +313,7 @@ export default function LecturerAppointments() {
                 </div>
             )}
 
-            {/* --- MODAL XEM CHI TIẾT (MỚI) --- */}
+            {/* --- MODAL XEM CHI TIẾT --- */}
             {viewModal.show && (
                 <>
                     <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} tabIndex="-1">

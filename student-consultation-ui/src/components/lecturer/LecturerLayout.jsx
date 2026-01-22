@@ -97,9 +97,9 @@ export default function LecturerLayout() {
     </NavLink>
 
 
-    <NavLink to="/lecturer/history" className={getNavLinkClass}>
-        <span>📜</span> Lịch sử tư vấn
-    </NavLink>
+    <NavLink to="/lecturer/statistics" className={getNavLinkClass}>
+    <span>📈</span> Thống kê báo cáo
+</NavLink>
 </div>
 
                 {/* 3. USER PROFILE (DỮ LIỆU THẬT) */}
