@@ -9,9 +9,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   // --- STATE ---
-  // ✅ QUAN TRỌNG: Mặc định phải là false
   const [isLoading, setIsLoading] = useState(false); 
-  
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -34,14 +32,19 @@ const Login = () => {
 
       // Thêm chút delay giả lập trải nghiệm tốt hơn (tùy chọn)
       setTimeout(() => {
+        // 👇 ĐÃ THÊM LOGIC ĐIỀU HƯỚNG CHO ADMIN
         if (role === "STUDENT") {
             navigate("/student/create-request");
         } else if (role === "LECTURER") {
             navigate("/lecturer/dashboard");
-        } else if (role === "STAFF") { // Thêm logic cho STAFF nếu cần
+        } else if (role === "STAFF") {
             navigate("/staff/procedures");
+        } else if (role === "ADMIN") {  // 👈 Thêm dòng này
+            navigate("/admin/dashboard");
+        } else {
+            // Trường hợp role lạ hoặc chưa định nghĩa
+            navigate("/"); 
         }
-        // Không cần setIsLoading(false) ở đây vì trang đã chuyển đi rồi
       }, 500);
 
     } catch (err) {
@@ -63,12 +66,11 @@ const Login = () => {
     setError("");
 
     try {
-        // Gọi API Backend
         const response = await axios.post(`http://localhost:8080/api/auth/forgot-password?email=${email}`);
 
-        alert(response.data); // "Mật khẩu mới đã được gửi..."
+        alert(response.data); 
         
-        setIsForgotPassword(false); // Quay lại màn hình đăng nhập
+        setIsForgotPassword(false); 
         setEmail("");
         
     } catch (err) {
@@ -76,7 +78,7 @@ const Login = () => {
         const errorMsg = err.response ? err.response.data : "Không thể kết nối đến Server!";
         setError("❌ " + errorMsg);
     } finally {
-        setIsLoading(false); // ✅ Dù thành công hay thất bại đều phải tắt loading
+        setIsLoading(false); 
     }
   };
 
