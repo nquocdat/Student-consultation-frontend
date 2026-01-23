@@ -1,34 +1,41 @@
 import React from "react";
 
-export default function StaffFilter({ filterStatus, setFilterStatus, onRefresh }) {
+export default function StaffFilter({ filterStatus, setFilterStatus, counts = {} }) {
+    
+    // Định nghĩa danh sách các Tab
+    const tabs = [
+        { key: "", label: "Tất cả" },
+        { key: "PENDING", label: "Chờ xử lý" },
+        { key: "PROCESSING", label: "Đang xử lý" },
+        { key: "READY_FOR_PICKUP", label: "Chờ nhận KQ" },
+        { key: "COMPLETED", label: "Hoàn thành" },
+        { key: "REJECTED", label: "Đã từ chối" },
+    ];
+
     return (
-        <div className="card border-0 shadow-sm mb-4">
-            <div className="card-body">
-                <div className="row g-3 align-items-center">
-                    <div className="col-auto">
-                        <label className="fw-bold me-2">Lọc trạng thái:</label>
-                    </div>
-                    <div className="col-auto">
-                        <select 
-                            className="form-select" 
-                            value={filterStatus} 
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                        >
-                            <option value="">-- Tất cả --</option>
-                            <option value="PENDING">Chờ xử lý</option>
-                            <option value="PROCESSING">Đang xử lý</option>
-                            <option value="READY_FOR_PICKUP">Chờ nhận kết quả</option>
-                            <option value="COMPLETED">Hoàn thành</option>
-                            <option value="REJECTED">Đã từ chối</option>
-                        </select>
-                    </div>
-                    <div className="col-auto ms-auto">
-                        <button className="btn btn-outline-primary" onClick={onRefresh}>
-                            <i className="bi bi-arrow-clockwise me-1"></i> Làm mới
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <div className="bg-white shadow-sm mb-4">
+            <ul className="nav nav-tabs border-bottom-0 d-flex flex-nowrap overflow-auto" style={{padding: "0 10px"}}>
+                {tabs.map((tab) => {
+                    const isActive = filterStatus === tab.key;
+                    return (
+                        <li key={tab.key} className="nav-item">
+                            <button
+                                className="nav-link border-0 bg-transparent rounded-0 py-3 px-4 fw-medium position-relative"
+                                style={{
+                                    color: isActive ? "#ee4d2d" : "#555", // Màu cam Shopee hoặc xám
+                                    borderBottom: isActive ? "3px solid #ee4d2d" : "3px solid transparent",
+                                    transition: "all 0.2s"
+                                }}
+                                onClick={() => setFilterStatus(tab.key)}
+                            >
+                                {tab.label}
+                                {/* Nếu muốn hiện số lượng (badget) thì thêm ở đây */}
+                                {/* {counts[tab.key] > 0 && <span className="ms-2 badge rounded-pill bg-danger">{counts[tab.key]}</span>} */}
+                            </button>
+                        </li>
+                    );
+                })}
+            </ul>
         </div>
     );
 }
