@@ -2,27 +2,29 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import authApi from "../../api/authApi";
 import { saveAuth } from "../../utils/auth";
-import axios from "axios"; // 👈 QUAN TRỌNG: Thêm thư viện này để gọi API
+import axios from "axios";
 import "./Login.css";
 
 const Login = () => {
   const navigate = useNavigate();
 
   // --- STATE ---
+  // ✅ QUAN TRỌNG: Mặc định phải là false
+  const [isLoading, setIsLoading] = useState(false); 
+  
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   // --- STATE QUÊN MẬT KHẨU ---
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
 
-  // --- LOGIC ĐĂNG NHẬP (GIỮ NGUYÊN) ---
+  // --- LOGIC ĐĂNG NHẬP ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setIsLoading(true);
+    setIsLoading(true); // Bắt đầu xoay
 
     try {
       const res = await authApi.login(username, password);
@@ -30,22 +32,27 @@ const Login = () => {
       
       saveAuth(token, role);
 
+      // Thêm chút delay giả lập trải nghiệm tốt hơn (tùy chọn)
       setTimeout(() => {
         if (role === "STUDENT") {
             navigate("/student/create-request");
         } else if (role === "LECTURER") {
             navigate("/lecturer/dashboard");
+        } else if (role === "STAFF") { // Thêm logic cho STAFF nếu cần
+            navigate("/staff/procedures");
         }
+        // Không cần setIsLoading(false) ở đây vì trang đã chuyển đi rồi
       }, 500);
 
     } catch (err) {
+      console.error(err);
       setError("❌ Sai tài khoản hoặc mật khẩu!");
-      setIsLoading(false);
+      setIsLoading(false); // ❌ Lỗi thì phải tắt xoay ngay
     }
   };
 
-  // --- LOGIC XỬ LÝ QUÊN MẬT KHẨU (ĐÃ SỬA THÀNH API THẬT) ---
-  const handleForgotPassword = async (e) => { // 👈 Thêm async
+  // --- LOGIC XỬ LÝ QUÊN MẬT KHẨU ---
+  const handleForgotPassword = async (e) => {
     e.preventDefault();
     if(!email) {
         setError("Vui lòng nhập email!");
@@ -53,27 +60,23 @@ const Login = () => {
     }
     
     setIsLoading(true);
-    setError(""); // Xóa lỗi cũ
+    setError("");
 
     try {
-        // 👇 GỌI API THẬT SANG BACKEND
-        // Lưu ý: Đảm bảo Backend đang chạy ở cổng 8080
+        // Gọi API Backend
         const response = await axios.post(`http://localhost:8080/api/auth/forgot-password?email=${email}`);
 
-        // Nếu thành công (Backend trả về 200 OK)
-        alert(response.data); // Hiện thông báo từ Backend: "Mật khẩu mới đã được gửi..."
+        alert(response.data); // "Mật khẩu mới đã được gửi..."
         
-        // Reset lại form
-        setIsForgotPassword(false); 
+        setIsForgotPassword(false); // Quay lại màn hình đăng nhập
         setEmail("");
         
     } catch (err) {
-        // Nếu lỗi (Backend trả về lỗi hoặc không kết nối được)
         console.error("Lỗi gửi mail:", err);
         const errorMsg = err.response ? err.response.data : "Không thể kết nối đến Server!";
         setError("❌ " + errorMsg);
     } finally {
-        setIsLoading(false);
+        setIsLoading(false); // ✅ Dù thành công hay thất bại đều phải tắt loading
     }
   };
 
@@ -92,9 +95,8 @@ const Login = () => {
 
         {error && <div className="error-message">{error}</div>}
 
-        {/* --- DÙNG ĐIỀU KIỆN ĐỂ HIỂN THỊ FORM --- */}
+        {/* --- FORM ĐĂNG NHẬP --- */}
         {!isForgotPassword ? (
-            // === FORM ĐĂNG NHẬP (CŨ) ===
             <form onSubmit={handleSubmit}>
               <div className="input-group">
                 <label>Tên đăng nhập / Mã SV</label>
@@ -124,13 +126,12 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* 👇 LINK QUÊN MẬT KHẨU */}
               <div style={{ textAlign: "right", marginBottom: "15px" }}>
                 <span 
                     style={{ color: "#007bff", cursor: "pointer", fontSize: "14px", fontWeight: "500" }}
                     onClick={() => {
                         setIsForgotPassword(true);
-                        setError(""); // Xóa lỗi cũ nếu có
+                        setError("");
                     }}
                 >
                     Quên mật khẩu?
@@ -138,11 +139,15 @@ const Login = () => {
               </div>
 
               <button type="submit" className="btn-login" disabled={isLoading}>
-                {isLoading ? "Đang xử lý..." : "Đăng Nhập"}
+                {isLoading ? (
+                    <span><i className="bi bi-arrow-repeat spin"></i> Đang xử lý...</span>
+                ) : (
+                    "Đăng Nhập"
+                )}
               </button>
             </form>
         ) : (
-            // === FORM QUÊN MẬT KHẨU (MỚI) ===
+            // --- FORM QUÊN MẬT KHẨU ---
             <form onSubmit={handleForgotPassword}>
                 <h3 style={{ textAlign: "center", marginBottom: "10px", color: "#333" }}>Khôi phục mật khẩu</h3>
                 <p style={{ fontSize: "13px", color: "#666", marginBottom: "20px", textAlign: "center" }}>
@@ -168,7 +173,6 @@ const Login = () => {
                     {isLoading ? "Đang gửi..." : "Gửi yêu cầu"}
                 </button>
 
-                {/* NÚT QUAY LẠI */}
                 <button 
                     type="button" 
                     className="btn-login" 

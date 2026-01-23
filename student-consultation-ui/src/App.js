@@ -18,6 +18,9 @@ import LecturerStatistics from "./pages/lecturer/LecturerStatistics";
 import StudentProcedureCatalog from "./components/student/StudentProcedureCatalog";
 import StudentProcedureCreate from "./components/student/StudentProcedureCreate";
 import StudentProcedureHistory from "./components/student/StudentProcedureHistory"; 
+import StaffLayout from "./components/staff/StaffLayout";
+import StaffProcedureManager from "./pages/staff/StaffProcedureManager";
+import StaffProfile from "./pages/staff/StaffProfile";
 
 
 
@@ -64,8 +67,17 @@ function App() {
           <Route path="profile" element={<LecturerProfile />} />
           <Route path="schedule" element={<LecturerSchedule />} />
           <Route path="statistics" element={<LecturerStatistics />} />
+        </Route>
 
-
+        <Route path="/staff" element={<StaffLayout />}>
+            
+            {/* Trang quản lý thủ tục */}
+            <Route path="procedures" element={<StaffProcedureManager />} />
+            <Route path="profile" element={<StaffProfile />} />
+            
+            {/* Mặc định vào /staff thì nhảy vào trang procedures */}
+            <Route index element={<Navigate to="procedures" replace />} />
+            
         </Route>
       </Routes>
     </BrowserRouter>
