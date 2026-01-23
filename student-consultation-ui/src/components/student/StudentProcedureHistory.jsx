@@ -5,6 +5,9 @@ export default function StudentProcedureHistory() {
     const DOMAIN = "http://localhost:8080";
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(false);
+    
+    // 1. THÊM STATE CHO BỘ LỌC NGÀY
+    const [filterDate, setFilterDate] = useState("");
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -21,21 +24,18 @@ export default function StudentProcedureHistory() {
         fetchHistory();
     }, []);
 
-    // --- HÀM TẢI FILE CÁ NHÂN (An toàn, có Token) ---
+    // --- HÀM TẢI FILE CÁ NHÂN ---
     const handleDownloadFile = async (requestId) => {
         try {
             const token = localStorage.getItem("token");
-            // Gọi API download bảo mật (bạn đã viết trong Controller trước đó)
             const res = await axios.get(`${DOMAIN}/api/procedures/request/${requestId}/download`, {
                 headers: { Authorization: `Bearer ${token}` },
-                responseType: 'blob' // Quan trọng: Báo Axios đây là file
+                responseType: 'blob'
             });
 
-            // Tạo link ảo để tải xuống
             const url = window.URL.createObjectURL(new Blob([res.data]));
             const link = document.createElement('a');
             link.href = url;
-            // Lấy tên file mặc định
             link.setAttribute('download', `File_dinh_kem_${requestId}.docx`); 
             document.body.appendChild(link);
             link.click();
@@ -89,20 +89,64 @@ export default function StudentProcedureHistory() {
         );
     };
 
+    // 2. SỬA HÀM HIỂN THỊ TRẠNG THÁI (TIẾNG VIỆT)
     const getStatusBadge = (status) => {
-        const map = {
+        // Map class màu sắc
+        const colorMap = {
             "PENDING": "bg-warning text-dark",
             "PROCESSING": "bg-info text-dark",
             "READY_FOR_PICKUP": "bg-success",
             "COMPLETED": "bg-primary",
             "REJECTED": "bg-danger"
         };
-        return <span className={`badge ${map[status] || "bg-secondary"}`}>{status}</span>;
+
+        // Map tên tiếng Việt
+        const textMap = {
+            "PENDING": "Chờ xử lý",
+            "PROCESSING": "Đang xử lý",
+            "READY_FOR_PICKUP": "Chờ nhận KQ",
+            "COMPLETED": "Hoàn thành",
+            "REJECTED": "Đã từ chối"
+        };
+
+        return <span className={`badge ${colorMap[status] || "bg-secondary"}`}>
+            {textMap[status] || status}
+        </span>;
     };
+
+    // 3. LOGIC LỌC DỮ LIỆU
+    const filteredHistory = history.filter(h => {
+        if (!filterDate) return true; // Nếu chưa chọn ngày thì lấy hết
+        // Chuyển đổi createdAt sang chuỗi YYYY-MM-DD để so sánh
+        const createdDate = new Date(h.createdAt).toISOString().split('T')[0];
+        return createdDate === filterDate;
+    });
 
     return (
         <div className="container-fluid animate__animated animate__fadeIn">
             <h3 className="fw-bold text-primary mb-4">🔍 Kết Quả Hồ Sơ</h3>
+            
+            {/* 4. GIAO DIỆN BỘ LỌC NGÀY */}
+            <div className="row mb-3">
+                <div className="col-md-4 col-lg-3">
+                    <div className="input-group">
+                        <span className="input-group-text bg-light border-0"><i className="bi bi-calendar3"></i></span>
+                        <input 
+                            type="date" 
+                            className="form-control" 
+                            value={filterDate}
+                            onChange={(e) => setFilterDate(e.target.value)}
+                            placeholder="Lọc theo ngày gửi"
+                        />
+                        {filterDate && (
+                            <button className="btn btn-outline-secondary" onClick={() => setFilterDate("")}>
+                                Xóa lọc
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
             <div className="card border-0 shadow-sm">
                 <div className="table-responsive">
                     <table className="table table-hover align-middle mb-0">
@@ -112,61 +156,62 @@ export default function StudentProcedureHistory() {
                                 <th>Sinh Viên</th>
                                 <th>Thủ tục</th>
                                 <th style={{width: "15%"}}>Nội dung gửi</th>
-                                
-                                {/* 1. CỘT MỚI: FILE ĐÍNH KÈM */}
                                 <th>File đính kèm</th>
-                                
                                 <th>Ngày gửi</th>
                                 <th>Trạng thái</th>
-                                
-                                {/* 2. ĐỔI TÊN THÀNH KẾT QUẢ XỬ LÝ */}
                                 <th style={{width: "30%", minWidth: "250px"}}>Kết quả xử lý</th>
-                                
-                                {/* 3. ĐÃ XÓA CỘT THAO TÁC */}
                             </tr>
                         </thead>
                         <tbody>
-                            {history.map((h, index) => (
-                                <tr key={h.id}>
-                                    <td className="ps-3">{index + 1}</td>
-                                    
-                                    <td>
-                                        <div className="fw-bold text-dark">{h.studentCode}</div>
-                                        <small className="text-muted">{h.studentName}</small>
-                                    </td>
+                            {/* 5. DÙNG filteredHistory ĐỂ HIỂN THỊ */}
+                            {filteredHistory.length > 0 ? (
+                                filteredHistory.map((h, index) => (
+                                    <tr key={h.id}>
+                                        <td className="ps-3">{index + 1}</td>
+                                        
+                                        <td>
+                                            <div className="fw-bold text-dark">{h.studentCode}</div>
+                                            <small className="text-muted">{h.studentName}</small>
+                                        </td>
 
-                                    <td className="fw-bold text-primary">{h.procedureName}</td>
+                                        <td className="fw-bold text-primary">{h.procedureName}</td>
 
-                                    <td>
-                                        <div className="text-truncate-3 small text-muted" style={{maxHeight: "60px", overflowY: "auto"}}>
-                                            {h.reason || "-- Không có nội dung --"}
-                                        </div>
-                                    </td>
+                                        <td>
+                                            <div className="text-truncate-3 small text-muted" style={{maxHeight: "60px", overflowY: "auto"}}>
+                                                {h.reason || "-- Không có nội dung --"}
+                                            </div>
+                                        </td>
 
-                                    {/* 1. HIỂN THỊ NÚT TẢI FILE Ở ĐÂY */}
-                                    <td>
-                                        {h.attachmentUrl ? (
-                                            <button 
-                                                className="btn btn-sm btn-outline-primary border-0 bg-light" 
-                                                onClick={() => handleDownloadFile(h.id)}
-                                                title="Tải file đã gửi"
-                                            >
-                                                <i className="bi bi-file-earmark-text me-1"></i> Tải về
-                                            </button>
-                                        ) : (
-                                            <span className="text-muted small">--</span>
-                                        )}
-                                    </td>
+                                        <td>
+                                            {h.attachmentUrl ? (
+                                                <button 
+                                                    className="btn btn-sm btn-outline-primary border-0 bg-light" 
+                                                    onClick={() => handleDownloadFile(h.id)}
+                                                    title="Tải file đã gửi"
+                                                >
+                                                    <i className="bi bi-file-earmark-text me-1"></i> Tải về
+                                                </button>
+                                            ) : (
+                                                <span className="text-muted small">--</span>
+                                            )}
+                                        </td>
 
-                                    <td>{new Date(h.createdAt).toLocaleDateString('vi-VN')}</td>
-                                    
-                                    <td>{getStatusBadge(h.status)}</td>
+                                        <td>{new Date(h.createdAt).toLocaleDateString('vi-VN')}</td>
+                                        
+                                        <td>{getStatusBadge(h.status)}</td>
 
-                                    <td className="py-3">
-                                        {renderTimeline(h.staffNote)}
+                                        <td className="py-3">
+                                            {renderTimeline(h.staffNote)}
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="8" className="text-center py-4 text-muted">
+                                        Không tìm thấy hồ sơ nào {filterDate ? `trong ngày ${new Date(filterDate).toLocaleDateString('vi-VN')}` : ""}
                                     </td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>
