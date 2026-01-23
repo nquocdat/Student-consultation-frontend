@@ -5,7 +5,10 @@ export default function StudentProcedureHistory() {
     const DOMAIN = "http://localhost:8080";
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(false);
+    
+    // --- STATE BỘ LỌC ---
     const [filterDate, setFilterDate] = useState("");
+    const [filterStatus, setFilterStatus] = useState("ALL"); // Mặc định xem tất cả
 
     // State lưu trữ các hàng đang mở rộng
     const [expandedRows, setExpandedRows] = useState(new Set());
@@ -53,14 +56,13 @@ export default function StudentProcedureHistory() {
         }
     };
 
-    // --- HÀM VẼ 1 DÒNG LOG (ĐÃ VIỆT HÓA) ---
+    // --- HÀM VẼ 1 DÒNG LOG ---
     const renderSingleLogItem = (line, index, isLatest) => {
         const parts = line.split(" ## ");
         if (parts.length < 3) return <div key={index} className="small text-muted mb-1 pb-1">{line}</div>;
 
         const [time, status, note] = parts;
 
-        // 👇 1. BỘ TỪ ĐIỂN DỊCH SANG TIẾNG VIỆT
         const statusMap = {
             "PENDING": "Chờ xử lý",
             "PROCESSING": "Đang xử lý",
@@ -68,11 +70,10 @@ export default function StudentProcedureHistory() {
             "COMPLETED": "Hoàn thành",
             "REJECTED": "Đã từ chối"
         };
-        const vietnameseStatus = statusMap[status] || status; // Nếu không khớp thì giữ nguyên tiếng Anh
+        const vietnameseStatus = statusMap[status] || status;
 
         return (
             <div key={index} className="d-flex mb-2 position-relative animate__animated animate__fadeIn">
-                {/* Đường kẻ nối */}
                 <div style={{
                     position: "absolute", left: "5px", top: "12px", bottom: "-15px",
                     width: "2px", backgroundColor: "#e9ecef", zIndex: 0,
@@ -86,7 +87,6 @@ export default function StudentProcedureHistory() {
                     }}>
                 </div>
                 <div>
-                    {/* 👇 2. HIỂN THỊ TIẾNG VIỆT Ở ĐÂY */}
                     <div className={`small fw-bold text-uppercase ${isLatest ? "text-success" : "text-secondary"}`}>
                         {vietnameseStatus}
                     </div>
@@ -99,11 +99,10 @@ export default function StudentProcedureHistory() {
         );
     };
 
-    // --- HÀM VẼ TIMELINE CHÍNH ---
     const renderTimeline = (logString, rowId) => {
         if (!logString) return <span className="text-muted small fst-italic">-- Chưa có cập nhật --</span>;
         
-        const logs = logString.split('\n').reverse(); // Mới nhất lên đầu
+        const logs = logString.split('\n').reverse();
         const isExpanded = expandedRows.has(rowId);
         
         const latestLog = logs[0];
@@ -156,18 +155,31 @@ export default function StudentProcedureHistory() {
         </span>;
     };
 
+    // --- 3. LOGIC LỌC DỮ LIỆU ---
     const filteredHistory = history.filter(h => {
-        if (!filterDate) return true;
-        const createdDate = new Date(h.createdAt).toISOString().split('T')[0];
-        return createdDate === filterDate;
+        // Lọc ngày
+        let dateMatch = true;
+        if (filterDate) {
+            const createdDate = new Date(h.createdAt).toISOString().split('T')[0];
+            dateMatch = createdDate === filterDate;
+        }
+
+        // Lọc trạng thái
+        let statusMatch = true;
+        if (filterStatus !== "ALL") {
+            statusMatch = h.status === filterStatus;
+        }
+
+        return dateMatch && statusMatch;
     });
 
     return (
         <div className="container-fluid animate__animated animate__fadeIn">
             <h3 className="fw-bold text-primary mb-4">🔍 Kết Quả Hồ Sơ</h3>
             
-            <div className="row mb-3">
-                <div className="col-md-4 col-lg-3">
+            <div className="row mb-3 g-3">
+                {/* LỌC NGÀY */}
+                <div className="col-md-3">
                     <div className="input-group">
                         <span className="input-group-text bg-light border-0"><i className="bi bi-calendar3"></i></span>
                         <input 
@@ -175,12 +187,39 @@ export default function StudentProcedureHistory() {
                             className="form-control" 
                             value={filterDate}
                             onChange={(e) => setFilterDate(e.target.value)}
+                            title="Lọc theo ngày gửi"
                         />
-                        {filterDate && (
-                            <button className="btn btn-outline-secondary" onClick={() => setFilterDate("")}>Xóa lọc</button>
-                        )}
                     </div>
                 </div>
+
+                {/* LỌC TRẠNG THÁI */}
+                <div className="col-md-3">
+                    <select 
+                        className="form-select border-0 shadow-sm bg-light fw-bold text-secondary" 
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        style={{cursor: "pointer"}}
+                    >
+                        <option value="ALL">📋 Tất cả trạng thái</option>
+                        <option value="PENDING">⏳ Chờ xử lý</option>
+                        <option value="PROCESSING">⚙️ Đang xử lý</option>
+                        <option value="READY_FOR_PICKUP">✅ Chờ nhận kết quả</option>
+                        <option value="COMPLETED">🎉 Hoàn thành</option>
+                        <option value="REJECTED">⛔ Đã từ chối</option>
+                    </select>
+                </div>
+
+                {/* NÚT RESET */}
+                {(filterDate || filterStatus !== "ALL") && (
+                    <div className="col-md-2">
+                        <button 
+                            className="btn btn-outline-secondary w-100" 
+                            onClick={() => { setFilterDate(""); setFilterStatus("ALL"); }}
+                        >
+                            <i className="bi bi-arrow-counterclockwise me-1"></i> Xóa lọc
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="card border-0 shadow-sm">
