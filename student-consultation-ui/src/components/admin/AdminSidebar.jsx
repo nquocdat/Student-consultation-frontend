@@ -15,7 +15,7 @@ export default function AdminSidebar() {
         <div className="d-flex flex-column flex-shrink-0 p-3 text-white bg-dark vh-100" style={{ width: "260px" }}>
             <div className="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
                 <i className="bi bi-shield-lock-fill fs-2 me-2 text-warning"></i>
-                <span className="fs-4 fw-bold">Admin Panel</span>
+                <span className="fs-4 fw-bold">Trang quản trị</span>
             </div>
             <hr />
             <ul className="nav nav-pills flex-column mb-auto">

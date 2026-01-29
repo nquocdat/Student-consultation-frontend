@@ -12,7 +12,7 @@ export default function AdminProcedureManager() {
     const [isEditing, setIsEditing] = useState(false);
     const [currentId, setCurrentId] = useState(null);
 
-    // State cho Form (Khớp với DB của bạn)
+    // State cho Form
     const initialFormState = {
         code: "",        // Mã thủ tục (P01)
         name: "",        // Tên thủ tục
@@ -31,14 +31,12 @@ export default function AdminProcedureManager() {
             const res = await axios.get(`${DOMAIN}/api/admin/procedures`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            // Log ra để kiểm tra xem backend trả về 'templateUrl' hay 'template_url'
+            console.log("Dữ liệu thủ tục:", res.data); 
             setProcedures(res.data);
         } catch (err) {
             console.error(err);
-            // Dữ liệu giả lập khớp với ảnh DB
-            setProcedures([
-                { id: 1, code: "P01", name: "Xin cấp bảng điểm", description: "Dành cho sinh viên năm cuối...", template_url: "/files/mau_bang_diem.docx" },
-                { id: 2, code: "P02", name: "Giấy xác nhận sinh viên", description: "Dùng để vay vốn ngân hàng...", template_url: "/files/mau_xac_nhan.docx" },
-            ]);
+            setProcedures([]);
         } finally {
             setLoading(false);
         }
@@ -50,7 +48,7 @@ export default function AdminProcedureManager() {
     const handleOpenAdd = () => {
         setIsEditing(false);
         setFormData(initialFormState);
-        setSelectedFile(null); // Reset file
+        setSelectedFile(null);
         setShowModal(true);
     };
 
@@ -63,23 +61,21 @@ export default function AdminProcedureManager() {
             name: proc.name,
             description: proc.description
         });
-        setSelectedFile(null); // Reset file (Nếu không chọn file mới thì giữ file cũ ở BE)
+        setSelectedFile(null);
         setShowModal(true);
     };
 
-    // 4. Xử lý Lưu (Dùng FormData để upload file)
+    // 4. Xử lý Lưu
     const handleSave = async () => {
         if (!formData.code || !formData.name) {
             alert("Vui lòng nhập Mã và Tên thủ tục!"); return;
         }
 
-        // Tạo FormData để chứa cả Text và File
         const data = new FormData();
         data.append("code", formData.code);
         data.append("name", formData.name);
         data.append("description", formData.description);
         
-        // Chỉ append file nếu người dùng có chọn file mới
         if (selectedFile) {
             data.append("file", selectedFile);
         }
@@ -87,7 +83,6 @@ export default function AdminProcedureManager() {
         const token = localStorage.getItem("token");
         
         try {
-            // Cấu hình Header cho upload file
             const config = {
                 headers: { 
                     Authorization: `Bearer ${token}`,
@@ -96,11 +91,9 @@ export default function AdminProcedureManager() {
             };
 
             if (isEditing) {
-                // PUT
                 await axios.put(`${DOMAIN}/api/admin/procedures/${currentId}`, data, config);
                 alert("Cập nhật thành công!");
             } else {
-                // POST
                 if (!selectedFile) {
                     alert("Vui lòng chọn file biểu mẫu!"); return;
                 }
@@ -142,44 +135,74 @@ export default function AdminProcedureManager() {
 
             {/* DANH SÁCH THỦ TỤC */}
             <div className="row g-4">
-                {procedures.map(proc => (
-                    <div className="col-md-6 col-lg-4" key={proc.id}>
-                        <div className="card h-100 border-0 shadow-sm hover-shadow transition-all rounded-4">
-                            <div className="card-body">
-                                <div className="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        {/* Hiển thị Mã thủ tục */}
-                                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle mb-2">
-                                            {proc.code}
-                                        </span>
-                                        <h5 className="card-title fw-bold text-dark mb-1">{proc.name}</h5>
-                                    </div>
-                                    
-                                    <div className="dropdown">
-                                        <button className="btn btn-sm btn-light rounded-circle" type="button" data-bs-toggle="dropdown">
-                                            <i className="bi bi-three-dots-vertical"></i>
-                                        </button>
-                                        <ul className="dropdown-menu dropdown-menu-end border-0 shadow">
-                                            <li><button className="dropdown-item" onClick={() => handleEditClick(proc)}><i className="bi bi-pencil me-2 text-warning"></i>Sửa</button></li>
-                                            <li><button className="dropdown-item text-danger" onClick={() => handleDelete(proc.id)}><i className="bi bi-trash me-2"></i>Xóa</button></li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                
-                                <p className="card-text text-muted small mt-3" style={{minHeight: '40px'}}>
-                                    {proc.description}
-                                </p>
+                {procedures.length === 0 ? (
+                    <div className="col-12 text-center text-muted py-5">
+                        <i className="bi bi-inbox display-4 d-block mb-3"></i>
+                        Chưa có dữ liệu thủ tục nào.
+                    </div>
+                ) : (
+                    procedures.map(proc => {
+                        // 🔥 LOGIC QUAN TRỌNG: Kiểm tra cả 2 trường hợp tên biến
+                        const fileUrl = proc.templateUrl || proc.template_url;
 
-                                {/* Link tải file mẫu */}
-                                <div className="border-top pt-3">
-                                    <a href={`${DOMAIN}${proc.template_url}`} className="btn btn-sm btn-outline-success w-100" target="_blank" rel="noreferrer">
-                                        <i className="bi bi-file-earmark-arrow-down me-2"></i>Tải biểu mẫu
-                                    </a>
+                        return (
+                            <div className="col-md-6 col-lg-4" key={proc.id}>
+                                <div className="card h-100 border-0 shadow-sm hover-shadow transition-all rounded-4">
+                                    <div className="card-body">
+                                        <div className="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <span className="badge bg-primary-subtle text-primary border border-primary-subtle mb-2">
+                                                    {proc.code}
+                                                </span>
+                                                <h5 className="card-title fw-bold text-dark mb-1">{proc.name}</h5>
+                                            </div>
+                                            
+                                            <div className="dropdown">
+                                                <button className="btn btn-sm btn-light rounded-circle" type="button" data-bs-toggle="dropdown">
+                                                    <i className="bi bi-three-dots-vertical"></i>
+                                                </button>
+                                                <ul className="dropdown-menu dropdown-menu-end border-0 shadow">
+                                                    <li><button className="dropdown-item" onClick={() => handleEditClick(proc)}><i className="bi bi-pencil me-2 text-warning"></i>Sửa</button></li>
+                                                    <li><button className="dropdown-item text-danger" onClick={() => handleDelete(proc.id)}><i className="bi bi-trash me-2"></i>Xóa</button></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        
+                                        <p className="card-text text-muted small mt-3" style={{minHeight: '40px'}}>
+                                            {proc.description}
+                                        </p>
+
+                                        {/* --- PHẦN NÚT TẢI ĐÃ SỬA --- */}
+                                        <div className="border-top pt-3">
+                                            <a 
+                                                // Nếu có link thì điền vào, không thì để #
+                                                href={fileUrl ? `${DOMAIN}${fileUrl}` : "#"} 
+                                                
+                                                // Đổi màu nút để dễ nhận biết (Xanh: Có file, Xám: Chưa có)
+                                                className={`btn btn-sm w-100 ${fileUrl ? 'btn-outline-success' : 'btn-outline-secondary'}`}
+                                                
+                                                // Thuộc tính quan trọng để tải file
+                                                download 
+                                                
+                                                onClick={(e) => {
+                                                    // Nếu không có URL file thì chặn lại và báo lỗi
+                                                    if (!fileUrl) {
+                                                        e.preventDefault();
+                                                        alert("Thủ tục này chưa được admin cập nhật file biểu mẫu!");
+                                                    }
+                                                }}
+                                            >
+                                                <i className={`bi ${fileUrl ? 'bi-file-earmark-arrow-down' : 'bi-exclamation-circle'} me-2`}></i>
+                                                {fileUrl ? "Tải biểu mẫu" : "Chưa có biểu mẫu"}
+                                            </a>
+                                        </div>
+                                        {/* --------------------------- */}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                ))}
+                        );
+                    })
+                )}
             </div>
 
             {/* MODAL FORM */}
@@ -192,28 +215,24 @@ export default function AdminProcedureManager() {
                                 <button className="btn-close btn-close-white" onClick={() => setShowModal(false)}></button>
                             </div>
                             <div className="modal-body">
-                                {/* Mã thủ tục */}
                                 <div className="mb-3">
                                     <label className="form-label fw-bold">Mã thủ tục <span className="text-danger">*</span></label>
                                     <input type="text" className="form-control" placeholder="VD: P01" 
                                         value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} />
                                 </div>
                                 
-                                {/* Tên thủ tục */}
                                 <div className="mb-3">
                                     <label className="form-label fw-bold">Tên thủ tục <span className="text-danger">*</span></label>
                                     <input type="text" className="form-control" placeholder="VD: Xin bảng điểm..." 
                                         value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                                 </div>
 
-                                {/* Mô tả */}
                                 <div className="mb-3">
                                     <label className="form-label fw-bold">Mô tả</label>
                                     <textarea className="form-control" rows="3" 
                                         value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
                                 </div>
 
-                                {/* Upload File */}
                                 <div className="mb-3">
                                     <label className="form-label fw-bold">Biểu mẫu đính kèm (Word/PDF)</label>
                                     <input type="file" className="form-control" 
