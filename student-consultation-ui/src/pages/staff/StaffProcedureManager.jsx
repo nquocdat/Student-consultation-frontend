@@ -52,7 +52,7 @@ export default function StaffProcedureManager() {
         return filename.split('.').pop().toLowerCase();
     };
 
-    // --- 4. TẢI FILE LẺ (Cho nút download ở từng dòng) ---
+    // --- 4. TẢI FILE LẺ ---
     const downloadFile = async (requestId) => {
         try {
             const request = requests.find(r => r.id === requestId);
@@ -79,7 +79,7 @@ export default function StaffProcedureManager() {
         }
     };
 
-    // --- 5. XỬ LÝ HÀNG LOẠT (ZIP + NHẬP PHÒNG + CHUYỂN TRẠNG THÁI) ---
+    // --- 5. XỬ LÝ HÀNG LOẠT (ĐÃ SỬA LOGIC) ---
     const handleBulkAction = async () => {
         const token = localStorage.getItem("token");
         if (!token) return;
@@ -88,47 +88,47 @@ export default function StaffProcedureManager() {
         let note = "";
         let shouldDownload = false;
 
-        // --- CẤU HÌNH HÀNH ĐỘNG DỰA TRÊN TAB ---
+        // --- CẤU HÌNH HÀNH ĐỘNG ---
         if (filterStatus === "PENDING") {
             if (!window.confirm(`Bạn có chắc muốn TIẾP NHẬN ${selectedIds.length} hồ sơ và TẢI FILE ZIP về không?`)) return;
-            
             nextStatus = "PROCESSING";
             note = "Đã tiếp nhận hồ sơ, đang xử lý.";
-            shouldDownload = true; // Tab này cần tải file
+            shouldDownload = true;
         } 
         else if (filterStatus === "PROCESSING") {
-            // 👇 Hộp thoại nhập số phòng cho tất cả hồ sơ đã chọn
             const room = window.prompt(`Nhập PHÒNG TRẢ KẾT QUẢ cho ${selectedIds.length} hồ sơ này:`, "C01");
-            if (room === null) return; // Hủy bỏ
-            if (room.trim() === "") {
-                alert("Bạn chưa nhập tên phòng!"); return;
-            }
-
+            if (room === null) return;
+            if (room.trim() === "") { alert("Bạn chưa nhập tên phòng!"); return; }
             nextStatus = "READY_FOR_PICKUP";
             note = `Đã có kết quả, em đến phòng ${room} nhận kết quả.`;
         } 
         else if (filterStatus === "READY_FOR_PICKUP") {
             if (!window.confirm(`Xác nhận ĐÃ TRẢ ${selectedIds.length} hồ sơ?`)) return;
-
             nextStatus = "COMPLETED";
             note = "Sinh viên đã nhận kết quả. Hoàn tất.";
         } 
         else { return; }
 
         setLoading(true);
-        const zip = new JSZip();
-        const folderName = `HoSo_TiepNhan_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}`;
-        const imgFolder = zip.folder(folderName);
-        
-        let successCount = 0;
-        let fileCount = 0;
 
         try {
-            for (const id of selectedIds) {
-                // A. TẢI FILE VÀO ZIP (Chỉ khi ở tab Pending)
-                if (shouldDownload) {
+            // =========================================================
+            // BƯỚC 1: XỬ LÝ TẢI FILE ZIP (NẾU CẦN) - LÀM TRƯỚC TIÊN
+            // =========================================================
+            if (shouldDownload) {
+                const zip = new JSZip();
+                const folderName = `TiepNhan_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}`;
+                const imgFolder = zip.folder(folderName);
+
+                // Dùng Promise.all để tải song song tất cả các file cùng lúc (Nhanh hơn)
+                const downloadPromises = selectedIds.map(async (id) => {
                     try {
                         const reqInfo = requests.find(r => r.id === id);
+                        if (!reqInfo.attachmentUrl) {
+                            imgFolder.file(`WARNING_${id}.txt`, `Hồ sơ của ${reqInfo.studentCode} không có file đính kèm.`);
+                            return;
+                        }
+
                         const ext = getFileExtension(reqInfo.attachmentUrl);
                         const fileName = `${reqInfo.studentCode}_${reqInfo.studentName}_${id}.${ext}`;
 
@@ -136,16 +136,28 @@ export default function StaffProcedureManager() {
                             headers: { Authorization: `Bearer ${token}` },
                             responseType: 'blob'
                         });
-
                         imgFolder.file(fileName, fileRes.data);
-                        fileCount++;
-                    } catch (downloadErr) {
-                        console.error(`Lỗi tải file ID ${id}`, downloadErr);
-                        imgFolder.file(`ERROR_${id}.txt`, "Lỗi tải file này.");
+                    } catch (err) {
+                        console.error(`Lỗi tải file ID ${id}`, err);
+                        imgFolder.file(`ERROR_${id}.txt`, "Lỗi tải file này: " + err.message);
                     }
-                }
+                });
 
-                // B. GỌI API UPDATE TRẠNG THÁI
+                // Chờ tất cả file tải xong
+                await Promise.all(downloadPromises);
+
+                // Tạo và tải file ZIP ngay lập tức
+                const content = await zip.generateAsync({ type: "blob" });
+                saveAs(content, `${folderName}.zip`);
+            }
+
+            // =========================================================
+            // BƯỚC 2: CẬP NHẬT TRẠNG THÁI (SAU KHI ĐÃ TẢI FILE)
+            // =========================================================
+            let successCount = 0;
+            
+            // Dùng Promise.all để update song song (Nhanh hơn vòng lặp for thường)
+            const updatePromises = selectedIds.map(async (id) => {
                 try {
                     await axios.put(`${DOMAIN}/api/procedures/staff/request/${id}/status`, 
                         { status: nextStatus, note: note }, 
@@ -155,26 +167,24 @@ export default function StaffProcedureManager() {
                 } catch (updateErr) {
                     console.error(`Lỗi update trạng thái ID ${id}`, updateErr);
                 }
-            }
+            });
 
-            // C. TẢI ZIP VỀ MÁY
-            if (shouldDownload && fileCount > 0) {
-                const content = await zip.generateAsync({ type: "blob" });
-                saveAs(content, `${folderName}.zip`);
-            }
+            await Promise.all(updatePromises);
 
-            alert(`Xử lý thành công ${successCount}/${selectedIds.length} hồ sơ!`);
+            alert(`Đã xử lý xong!\n- Cập nhật thành công: ${successCount}/${selectedIds.length} hồ sơ.`);
+            
+            // Reload lại bảng & Reset chọn
             fetchRequests(); 
             setSelectedIds([]); 
 
         } catch (err) {
-            alert("Có lỗi xảy ra: " + err.message);
+            alert("Có lỗi chung xảy ra: " + err.message);
         } finally {
             setLoading(false);
         }
     };
 
-    // --- 6. CẬP NHẬT LẺ (TỪ MODAL) ---
+    // --- 6. CẬP NHẬT LẺ ---
     const handleUpdateSubmit = async (requestId, newStatus, note) => {
         try {
             const token = localStorage.getItem("token");
