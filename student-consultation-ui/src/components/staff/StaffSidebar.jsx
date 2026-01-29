@@ -122,7 +122,7 @@ export default function StaffSidebar() {
                         style={{...styles.navLink, opacity: 0.5, cursor: "not-allowed"}}
                     >
                         <i className="bi bi-calendar-check me-3 fs-5"></i>
-                        <span>Lịch công tác <span className="badge bg-warning text-dark ms-2" style={{fontSize: "0.6rem"}}>Sắp có</span></span>
+                        <span>Lịch công tác </span>
                     </NavLink>
                 </li>
             </ul>
