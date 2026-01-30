@@ -35,6 +35,7 @@ import AdminProcedureManager from "./pages/admin/AdminProcedureManager";
 import AdminAppointmentManager from "./pages/admin/AdminAppointmentManager";
 import AdminLecturerSchedule from "./pages/admin/AdminLecturerSchedule";
 import AdminSingleLecturerSchedule from "./pages/admin/AdminSingleLecturerSchedule";
+import AdminRequestManager from "./pages/admin/AdminRequestManager";
 
 function App() {
   return (
@@ -107,9 +108,8 @@ function App() {
           <Route path="appointments" element={<AdminAppointmentManager />} />
           <Route path="requests" element={<StaffProcedureManager />} />
           <Route path="lecturer-schedules" element={<AdminLecturerSchedule />} />
-          {/* 🔥 Route MỚI: Xem lịch chi tiết của 1 giảng viên */}
           <Route path="lecturer-schedules/:lecturerId" element={<AdminSingleLecturerSchedule />} />
-          
+          <Route path="procedure-requests" element={<AdminRequestManager />} />
         </Route>
 
         {/* ======================================================= */}

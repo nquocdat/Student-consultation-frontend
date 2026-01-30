@@ -44,6 +44,13 @@ export default function AdminSidebar() {
                         <i className="bi bi-calendar-check me-2"></i> Lịch làm việc GV
                     </NavLink>
                 </li>
+                <li className="nav-item mb-2">
+                    {/* 🔥 SỬA LẠI to="/admin/procedure-requests" cho khớp với App.js */}
+                    <NavLink to="/admin/procedure-requests" className={({ isActive }) => `nav-link text-white ${isActive ? "active bg-primary" : ""}`}>
+                        <i className="bi bi-clipboard-data me-2"></i> Yêu cầu Thủ tục
+                    </NavLink>
+                </li>
+
             </ul>
             <hr />
             <div className="dropdown">
