@@ -16,7 +16,7 @@ export default function AdminAppointmentManager() {
     const itemsPerPage = 20;
 
     // --- STATE CHO POP-UP (MODAL) ---
-    const [selectedAppt, setSelectedAppt] = useState(null); // Lưu lịch hẹn đang xem chi tiết
+    const [selectedAppt, setSelectedAppt] = useState(null); 
 
     // 1. Tải dữ liệu
     const fetchAppointments = async () => {
@@ -26,7 +26,6 @@ export default function AdminAppointmentManager() {
             const res = await axios.get(`${DOMAIN}/api/admin/appointments`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            // Sắp xếp ngày mới nhất lên đầu
             const sortedData = res.data.sort((a, b) => new Date(b.date) - new Date(a.date));
             setAppointments(sortedData);
         } catch (err) {
@@ -52,7 +51,6 @@ export default function AdminAppointmentManager() {
             });
             alert("Đã hủy lịch hẹn thành công!");
             fetchAppointments();
-            // Nếu đang mở modal của item này thì đóng lại
             if (selectedAppt && selectedAppt.id === id) setSelectedAppt(null);
         } catch (err) {
             alert("Lỗi: " + (err.response?.data || "Có lỗi xảy ra"));
@@ -75,7 +73,31 @@ export default function AdminAppointmentManager() {
         }
     };
 
-    // 4. Helper hiển thị Status
+    // 🔥 4. HÀM MỚI: XỬ LÝ TẢI FILE CÓ TOKEN BẢO MẬT
+    const handleDownloadFile = async (fileId, fileName) => {
+        try {
+            const token = localStorage.getItem("token");
+            // Gọi API theo ID (fileId) thay vì fileName
+            const response = await axios.get(`${DOMAIN}/api/files/download/${fileId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+                responseType: 'blob', 
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileName); // Đặt tên file hiển thị khi tải xong
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error(err);
+            alert("Lỗi tải file: File không tồn tại hoặc đường dẫn bị sai.");
+        }
+    };
+
+    // Helper hiển thị Status
     const getStatusBadge = (code) => {
         const safeCode = code ? code : "UNKNOWN";
         switch (safeCode) {
@@ -112,7 +134,6 @@ export default function AdminAppointmentManager() {
         return matchSearch && matchDate && matchStatus;
     });
 
-    // Phân trang
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentItems = filteredAppointments.slice(indexOfFirstItem, indexOfLastItem);
@@ -173,15 +194,11 @@ export default function AdminAppointmentManager() {
                                     (currentItems.map((appt, index) => (
                                         <tr key={appt.id}>
                                             <td className="ps-4 fw-bold text-muted">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-
                                             <td>
                                                 <div className="fw-bold text-dark">{appt.studentName}</div>
                                                 <div className="small text-muted">{appt.studentCode}</div>
                                             </td>
-
                                             <td><span className="text-primary fw-bold">{appt.lecturerName}</span></td>
-
-                                            {/* --- CLICK VÀO CỘT NÀY SẼ HIỆN MODAL --- */}
                                             <td 
                                                 onClick={() => setSelectedAppt(appt)} 
                                                 style={{ cursor: 'pointer' }}
@@ -194,7 +211,6 @@ export default function AdminAppointmentManager() {
                                                     </div>
                                                     <i className="bi bi-eye-fill ms-2 text-primary opacity-50"></i>
                                                 </div>
-                                                
                                                 {appt.attachments && appt.attachments.length > 0 && (
                                                     <div className="mt-1">
                                                         <span className="badge bg-secondary rounded-pill">
@@ -204,16 +220,13 @@ export default function AdminAppointmentManager() {
                                                     </div>
                                                 )}
                                             </td>
-
                                             <td>
                                                 <div className="fw-bold">{formatDateVN(appt.date)}</div>
                                                 <div className="small text-muted bg-light px-2 rounded d-inline-block border mt-1">
                                                     {formatTimeRange(appt.time, appt.endTime)}
                                                 </div>
                                             </td>
-
                                             <td>{getStatusBadge(appt.statusCode)}</td>
-
                                             <td className="text-end pe-4">
                                                 <div className="btn-group">
                                                     {appt.statusCode !== "COMPLETED" && appt.statusCode !== "CANCELED" && (
@@ -231,7 +244,6 @@ export default function AdminAppointmentManager() {
                         </tbody>
                     </table>
                 </div>
-
                 {/* PHÂN TRANG */}
                 {filteredAppointments.length > itemsPerPage && (
                     <div className="card-footer bg-white border-0 py-3 d-flex justify-content-center">
@@ -253,10 +265,9 @@ export default function AdminAppointmentManager() {
                     </div>
                 )}
             </div>
-            
             <div className="text-end mt-2 text-muted small">Hiển thị {currentItems.length} / {filteredAppointments.length} kết quả</div>
 
-            {/* --- PHẦN POP-UP (MODAL) --- */}
+            {/* --- PHẦN POP-UP (MODAL) ĐÃ SỬA NÚT TẢI --- */}
             {selectedAppt && (
                 <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }} tabIndex="-1">
                     <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -298,11 +309,14 @@ export default function AdminAppointmentManager() {
                                                             <i className="bi bi-file-earmark-text fs-4 text-primary me-2"></i>
                                                             <span className="text-truncate">{file.fileName}</span>
                                                         </div>
-                                                        <a href={`${DOMAIN}/api/files/download/${file.fileName}`} 
-                                                           className="btn btn-sm btn-outline-primary ms-2" 
-                                                           target="_blank" rel="noreferrer">
-                                                            <i className="bi bi-download me-1"></i> Tải về
-                                                        </a>
+                                                        {/* 🔥 SỬA NÚT TẢI TẠI ĐÂY: Dùng button onClick thay vì thẻ a href */}
+                                                        <button 
+    className="btn btn-sm btn-outline-primary ms-2" 
+    // 🔥 Truyền file.id vào đây
+    onClick={() => handleDownloadFile(file.id, file.fileName)}
+>
+    <i className="bi bi-download me-1"></i> Tải về
+</button>
                                                     </div>
                                                 ))}
                                             </div>

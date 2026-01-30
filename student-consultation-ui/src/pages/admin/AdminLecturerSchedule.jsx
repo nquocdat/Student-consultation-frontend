@@ -141,9 +141,7 @@ export default function AdminLecturerSchedule() {
                         value={selectedDate} 
                         onChange={(e) => setSelectedDate(e.target.value)} 
                     />
-                    <button className="btn btn-outline-primary" onClick={fetchSchedules}>
-                        <i className="bi bi-arrow-clockwise me-1"></i> Tải lại
-                    </button>
+                   
                 </div>
             </div>
 
