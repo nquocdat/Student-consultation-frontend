@@ -15,6 +15,9 @@ export default function AdminAppointmentManager() {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 20;
 
+    // --- STATE CHO POP-UP (MODAL) ---
+    const [selectedAppt, setSelectedAppt] = useState(null); // Lưu lịch hẹn đang xem chi tiết
+
     // 1. Tải dữ liệu
     const fetchAppointments = async () => {
         setLoading(true);
@@ -44,11 +47,13 @@ export default function AdminAppointmentManager() {
         if (!window.confirm("Xác nhận HỦY lịch hẹn này?")) return;
         try {
             const token = localStorage.getItem("token");
-            await axios.put(`${DOMAIN}/api/admin/appointments/${id}/cancel`, {}, { 
-                headers: { Authorization: `Bearer ${token}` } 
+            await axios.put(`${DOMAIN}/api/admin/appointments/${id}/cancel`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
             });
             alert("Đã hủy lịch hẹn thành công!");
             fetchAppointments();
+            // Nếu đang mở modal của item này thì đóng lại
+            if (selectedAppt && selectedAppt.id === id) setSelectedAppt(null);
         } catch (err) {
             alert("Lỗi: " + (err.response?.data || "Có lỗi xảy ra"));
         }
@@ -64,6 +69,7 @@ export default function AdminAppointmentManager() {
             });
             alert("Đã xóa dữ liệu!");
             fetchAppointments();
+            if (selectedAppt && selectedAppt.id === id) setSelectedAppt(null);
         } catch (err) {
             alert("Lỗi: " + (err.response?.data));
         }
@@ -71,7 +77,6 @@ export default function AdminAppointmentManager() {
 
     // 4. Helper hiển thị Status
     const getStatusBadge = (code) => {
-        // Fallback nếu code bị null
         const safeCode = code ? code : "UNKNOWN";
         switch (safeCode) {
             case "PENDING": return <span className="badge bg-warning text-dark">Chờ duyệt</span>;
@@ -98,15 +103,12 @@ export default function AdminAppointmentManager() {
         return `${start} - ${end}`;
     };
 
-    // --- LOGIC LỌC (ĐÃ SỬA DÙNG statusCode) ---
+    // --- LOGIC LỌC ---
     const filteredAppointments = appointments.filter(appt => {
         const s = searchTerm.toLowerCase();
         const matchSearch = (appt.studentName?.toLowerCase().includes(s) || appt.lecturerName?.toLowerCase().includes(s));
         const matchDate = filterDate ? appt.date === filterDate : true;
-        
-        // 🔥 QUAN TRỌNG: Sửa appt.status -> appt.statusCode
-        const matchStatus = filterStatus ? appt.statusCode === filterStatus : true; 
-        
+        const matchStatus = filterStatus ? appt.statusCode === filterStatus : true;
         return matchSearch && matchDate && matchStatus;
     });
 
@@ -118,7 +120,7 @@ export default function AdminAppointmentManager() {
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
     return (
-        <div className="container-fluid p-4 animate__animated animate__fadeIn">
+        <div className="container-fluid p-4 animate__animated animate__fadeIn position-relative">
             <h3 className="fw-bold mb-4 text-primary"><i className="bi bi-calendar-check-fill me-2"></i>Quản lý Lịch hẹn</h3>
 
             {/* BỘ LỌC */}
@@ -127,7 +129,7 @@ export default function AdminAppointmentManager() {
                     <div className="row g-3">
                         <div className="col-md-4">
                             <label className="form-label fw-bold small text-muted">Tìm kiếm</label>
-                            <input type="text" className="form-control bg-light" placeholder="Tên SV hoặc GV..." 
+                            <input type="text" className="form-control bg-light" placeholder="Tên SV hoặc GV..."
                                 value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                         </div>
                         <div className="col-md-3">
@@ -146,7 +148,6 @@ export default function AdminAppointmentManager() {
                                 <option value="CANCELED">Đã hủy</option>
                             </select>
                         </div>
-                        
                     </div>
                 </div>
             </div>
@@ -160,69 +161,73 @@ export default function AdminAppointmentManager() {
                                 <th className="ps-4 py-3">STT</th>
                                 <th className="py-3">Sinh viên</th>
                                 <th className="py-3">Giảng viên</th>
-                                <th className="py-3" style={{width: '20%'}}>Lý do & File</th>
+                                <th className="py-3" style={{ width: '20%' }}>Lý do & File</th>
                                 <th className="py-3">Thời gian</th>
                                 <th className="py-3">Trạng thái</th>
                                 <th className="text-end pe-4 py-3">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {loading ? (<tr><td colSpan="7" className="text-center py-5">Đang tải...</td></tr>) : 
-                             currentItems.length === 0 ? (<tr><td colSpan="7" className="text-center py-5 text-muted">Không có dữ liệu.</td></tr>) : 
-                             (currentItems.map((appt, index) => (
-                                <tr key={appt.id}>
-                                    <td className="ps-4 fw-bold text-muted">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                                    
-                                    <td>
-                                        <div className="fw-bold text-dark">{appt.studentName}</div>
-                                        <div className="small text-muted">{appt.studentCode}</div>
-                                    </td>
-                                    
-                                    <td><span className="text-primary fw-bold">{appt.lecturerName}</span></td>
-                                    
-                                    {/* CỘT LÝ DO & FILE */}
-                                    <td>
-                                        <div className="text-truncate" style={{maxWidth: '200px'}} title={appt.reason}>
-                                            {appt.reason || <span className="text-muted small">--</span>}
-                                        </div>
-                                        {appt.attachments && appt.attachments.length > 0 && (
-                                            <div className="mt-1 d-flex flex-wrap gap-1">
-                                                {appt.attachments.map(file => (
-                                                    <a key={file.id} href={`${DOMAIN}/api/files/download/${file.fileName}`} 
-                                                       className="badge bg-light text-primary border text-decoration-none" target="_blank" rel="noreferrer">
-                                                        <i className="bi bi-paperclip"></i> File
-                                                    </a>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </td>
+                            {loading ? (<tr><td colSpan="7" className="text-center py-5">Đang tải...</td></tr>) :
+                                currentItems.length === 0 ? (<tr><td colSpan="7" className="text-center py-5 text-muted">Không có dữ liệu.</td></tr>) :
+                                    (currentItems.map((appt, index) => (
+                                        <tr key={appt.id}>
+                                            <td className="ps-4 fw-bold text-muted">{(currentPage - 1) * itemsPerPage + index + 1}</td>
 
-                                    {/* CỘT THỜI GIAN */}
-                                    <td>
-                                        <div className="fw-bold">{formatDateVN(appt.date)}</div>
-                                        <div className="small text-muted bg-light px-2 rounded d-inline-block border mt-1">
-                                            {formatTimeRange(appt.time, appt.endTime)}
-                                        </div>
-                                    </td>
-                                    
-                                    {/* 🔥 QUAN TRỌNG: Sửa appt.status -> appt.statusCode */}
-                                    <td>{getStatusBadge(appt.statusCode)}</td>
-                                    
-                                    <td className="text-end pe-4">
-                                        <div className="btn-group">
-                                            {/* 🔥 Sửa appt.status -> appt.statusCode */}
-                                            {appt.statusCode !== "COMPLETED" && appt.statusCode !== "CANCELED" && (
-                                                <button className="btn btn-sm btn-outline-warning" onClick={() => handleCancel(appt.id)} title="Hủy">
-                                                    <i className="bi bi-x-circle"></i>
-                                                </button>
-                                            )}
-                                            <button className="btn btn-sm btn-outline-danger ms-1" onClick={() => handleDelete(appt.id)} title="Xóa">
-                                                <i className="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )))}
+                                            <td>
+                                                <div className="fw-bold text-dark">{appt.studentName}</div>
+                                                <div className="small text-muted">{appt.studentCode}</div>
+                                            </td>
+
+                                            <td><span className="text-primary fw-bold">{appt.lecturerName}</span></td>
+
+                                            {/* --- CLICK VÀO CỘT NÀY SẼ HIỆN MODAL --- */}
+                                            <td 
+                                                onClick={() => setSelectedAppt(appt)} 
+                                                style={{ cursor: 'pointer' }}
+                                                className="bg-light-hover"
+                                                title="Nhấn để xem chi tiết"
+                                            >
+                                                <div className="d-flex align-items-center">
+                                                    <div className="text-truncate" style={{ maxWidth: '180px' }}>
+                                                        {appt.reason || <span className="text-muted small">--</span>}
+                                                    </div>
+                                                    <i className="bi bi-eye-fill ms-2 text-primary opacity-50"></i>
+                                                </div>
+                                                
+                                                {appt.attachments && appt.attachments.length > 0 && (
+                                                    <div className="mt-1">
+                                                        <span className="badge bg-secondary rounded-pill">
+                                                            <i className="bi bi-paperclip me-1"></i> 
+                                                            {appt.attachments.length} files
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </td>
+
+                                            <td>
+                                                <div className="fw-bold">{formatDateVN(appt.date)}</div>
+                                                <div className="small text-muted bg-light px-2 rounded d-inline-block border mt-1">
+                                                    {formatTimeRange(appt.time, appt.endTime)}
+                                                </div>
+                                            </td>
+
+                                            <td>{getStatusBadge(appt.statusCode)}</td>
+
+                                            <td className="text-end pe-4">
+                                                <div className="btn-group">
+                                                    {appt.statusCode !== "COMPLETED" && appt.statusCode !== "CANCELED" && (
+                                                        <button className="btn btn-sm btn-outline-warning" onClick={(e) => {e.stopPropagation(); handleCancel(appt.id);}} title="Hủy">
+                                                            <i className="bi bi-x-circle"></i>
+                                                        </button>
+                                                    )}
+                                                    <button className="btn btn-sm btn-outline-danger ms-1" onClick={(e) => {e.stopPropagation(); handleDelete(appt.id);}} title="Xóa">
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )))}
                         </tbody>
                     </table>
                 </div>
@@ -248,7 +253,72 @@ export default function AdminAppointmentManager() {
                     </div>
                 )}
             </div>
+            
             <div className="text-end mt-2 text-muted small">Hiển thị {currentItems.length} / {filteredAppointments.length} kết quả</div>
+
+            {/* --- PHẦN POP-UP (MODAL) --- */}
+            {selectedAppt && (
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }} tabIndex="-1">
+                    <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                        <div className="modal-content shadow-lg rounded-4">
+                            <div className="modal-header bg-light">
+                                <h5 className="modal-title fw-bold text-primary">
+                                    <i className="bi bi-info-circle-fill me-2"></i>Chi tiết Lịch hẹn
+                                </h5>
+                                <button type="button" className="btn-close" onClick={() => setSelectedAppt(null)}></button>
+                            </div>
+                            <div className="modal-body p-4">
+                                <div className="row mb-3">
+                                    <div className="col-md-6">
+                                        <label className="fw-bold text-muted small">Sinh viên</label>
+                                        <div className="fs-5">{selectedAppt.studentName}</div>
+                                        <div className="text-muted">{selectedAppt.studentCode}</div>
+                                    </div>
+                                    <div className="col-md-6 border-start">
+                                        <label className="fw-bold text-muted small">Giảng viên</label>
+                                        <div className="fs-5 text-primary">{selectedAppt.lecturerName}</div>
+                                    </div>
+                                </div>
+                                <hr />
+                                <div className="mb-3">
+                                    <label className="fw-bold text-muted small mb-1">Lý do chi tiết</label>
+                                    <div className="p-3 bg-light rounded border text-break" style={{whiteSpace: 'pre-wrap'}}>
+                                        {selectedAppt.reason || "Không có nội dung lý do."}
+                                    </div>
+                                </div>
+
+                                <div className="mb-3">
+                                    <label className="fw-bold text-muted small mb-2">Tệp đính kèm ({selectedAppt.attachments?.length || 0})</label>
+                                    <div>
+                                        {selectedAppt.attachments && selectedAppt.attachments.length > 0 ? (
+                                            <div className="d-flex flex-column gap-2">
+                                                {selectedAppt.attachments.map(file => (
+                                                    <div key={file.id} className="d-flex align-items-center justify-content-between p-2 border rounded hover-bg-light">
+                                                        <div className="d-flex align-items-center overflow-hidden">
+                                                            <i className="bi bi-file-earmark-text fs-4 text-primary me-2"></i>
+                                                            <span className="text-truncate">{file.fileName}</span>
+                                                        </div>
+                                                        <a href={`${DOMAIN}/api/files/download/${file.fileName}`} 
+                                                           className="btn btn-sm btn-outline-primary ms-2" 
+                                                           target="_blank" rel="noreferrer">
+                                                            <i className="bi bi-download me-1"></i> Tải về
+                                                        </a>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-muted fst-italic">Không có tệp đính kèm.</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary" onClick={() => setSelectedAppt(null)}>Đóng</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

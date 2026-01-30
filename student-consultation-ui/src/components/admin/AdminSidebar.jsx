@@ -39,6 +39,11 @@ export default function AdminSidebar() {
                         <i className="bi bi-calendar-week me-2"></i> Quản lý Lịch hẹn
                     </NavLink>
                 </li>
+                <li className="nav-item mb-2">
+                    <NavLink to="/admin/lecturer-schedules" className={({ isActive }) => `nav-link text-white ${isActive ? "active bg-primary" : ""}`}>
+                        <i className="bi bi-calendar-check me-2"></i> Lịch làm việc GV
+                    </NavLink>
+                </li>
             </ul>
             <hr />
             <div className="dropdown">
