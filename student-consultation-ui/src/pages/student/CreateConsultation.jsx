@@ -214,7 +214,7 @@ const CreateConsultation = () => {
                     </div>
                 </div>
 
-                <button className="btn btn-success w-100 fw-bold py-2 shadow-sm" onClick={handleSubmit}>🚀 Gửi Đăng Ký</button>
+                <button className="btn btn-success w-100 fw-bold py-2 shadow-sm" onClick={handleSubmit}> Gửi Đăng Ký</button>
             </div>
         </div>
     );
