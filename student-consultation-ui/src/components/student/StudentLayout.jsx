@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import ChatAssistant from "../../components/chatAI/ChatAssistant.jsx";
 import axios from "axios";
 
 const StudentLayout = () => {
@@ -301,7 +302,9 @@ const StudentLayout = () => {
       }}>
         <Outlet />
       </main>
+      <ChatAssistant />
     </div>
+    
   );
 };
 
