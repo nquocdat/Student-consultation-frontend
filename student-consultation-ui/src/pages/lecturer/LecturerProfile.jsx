@@ -183,6 +183,15 @@ const LecturerProfile = () => {
                         <div className="row mb-3"><div className="col-sm-4 fw-bold text-muted">Phòng làm việc:</div><div className="col-sm-8 fw-medium">{profile.office || "---"}</div></div>
                         <div className="row mb-3"><div className="col-sm-4 fw-bold text-muted">Ngày sinh:</div><div className="col-sm-8 fw-medium">{profile.dob || "---"}</div></div>
                         
+                        {/* 🔥🔥🔥 ĐÃ THÊM PHẦN HIỂN THỊ GIỚI TÍNH Ở ĐÂY 🔥🔥🔥 */}
+                        <div className="row mb-3">
+                            <div className="col-sm-4 fw-bold text-muted">Giới tính:</div>
+                            <div className="col-sm-8 fw-medium">
+                                {profile.gender === "NAM" ? "Nam" : (profile.gender === "NU" ? "Nữ" : "---")}
+                            </div>
+                        </div>
+                        {/* -------------------------------------------------- */}
+
                         <h5 className="text-secondary fw-bold text-uppercase small mt-4">Thông tin chuyên môn</h5> <hr className="mt-1" />
                         
                         <div className="row mb-3"><div className="col-sm-4 fw-bold text-muted">Khoa:</div><div className="col-sm-8 fw-medium">{profile.department}</div></div>

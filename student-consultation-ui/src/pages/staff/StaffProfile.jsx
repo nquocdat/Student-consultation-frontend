@@ -65,12 +65,10 @@ const StaffProfile = () => {
 
         try {
             const token = localStorage.getItem("token");
-            // Gọi API Upload
             const res = await axios.post(API_UPLOAD_AVATAR, formData, {
                 headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" }
             });
             
-            // Cập nhật lại avatarUrl nếu backend trả về base64
             if (res.data) {
                 setProfile(prev => ({ ...prev, avatarUrl: res.data }));
             }
@@ -86,7 +84,6 @@ const StaffProfile = () => {
     };
 
     const submitChangePassword = async () => {
-        // Validate
         if (!passData.oldPassword || !passData.newPassword || !passData.confirmPassword) {
             setPassError("Vui lòng điền đầy đủ thông tin!"); return;
         }
@@ -97,7 +94,6 @@ const StaffProfile = () => {
             setPassError("Mật khẩu mới phải từ 6 ký tự trở lên!"); return;
         }
 
-        // Call API
         try {
             const token = localStorage.getItem("token");
             await axios.post(API_CHANGE_PASS, {
@@ -124,13 +120,12 @@ const StaffProfile = () => {
     if (error) return <div className="text-center mt-5 text-danger">{error}</div>;
     if (!profile) return null;
 
-    // Ảnh mặc định
     const defaultAvatar = `https://ui-avatars.com/api/?name=${profile.fullname}&background=random&size=200`;
     const avatarSrc = previewImage || profile.avatarUrl || defaultAvatar;
 
     return (
         <div className="container mt-4 animate__animated animate__fadeIn">
-            <div className="card shadow p-4" style={{borderRadius: "15px"}}>
+            <div className="card shadow p-4 border-0 rounded-4">
                 <h3 className="text-primary mb-4 text-center fw-bold">
                     👤 Hồ Sơ Nhân Viên
                 </h3>
@@ -146,108 +141,107 @@ const StaffProfile = () => {
                                 style={{ width: "180px", height: "180px", objectFit: "cover", cursor: "pointer" }}
                                 onClick={() => document.getElementById('fileInput').click()}
                             />
-                            
-                            {/* Input file ẩn */}
                             <input id="fileInput" type="file" style={{ display: "none" }} onChange={handleFileChange} accept="image/*" />
                             
-                            {/* Nút đổi Avatar */}
-                            <button 
-                                className="btn btn-sm btn-light border w-100 mt-1 fw-bold text-primary"
-                                onClick={() => document.getElementById('fileInput').click()}
-                            >
+                            <div className="mt-1 text-primary fw-bold" style={{ cursor: "pointer" }} onClick={() => document.getElementById('fileInput').click()}>
                                 📸 Đổi ảnh đại diện
-                            </button>
+                            </div>
                         </div>
 
                         <h4 className="mt-3 fw-bold">{profile.fullname}</h4>
+                        <span className="badge bg-info text-dark px-3 py-2 rounded-pill mt-1">
+                            {profile.position || "Nhân viên"}
+                        </span>
                         
-                        {/* Hiển thị Username (Mã NV) */}
-                        <p className="text-muted fw-bold">{profile.staffCode}</p>
+                        {/* Hiển thị Mã NV */}
+                        <p className="text-muted mt-2 small">Mã NV: <span className="fw-bold">{profile.staffCode || profile.username}</span></p>
 
-                        <button className="btn btn-outline-danger mt-2 w-75 rounded-pill" onClick={() => setShowModal(true)}>
+                        <button className="btn btn-outline-danger mt-3 w-75 rounded-pill shadow-sm" onClick={() => setShowModal(true)}>
                             <i className="bi bi-key-fill me-2"></i>Đổi mật khẩu
                         </button>
                     </div>
 
                     {/* --- CỘT PHẢI: THÔNG TIN CHI TIẾT --- */}
                     <div className="col-md-8 px-4">
-                        <div className="alert alert-info py-2 small">
-                            <i className="bi bi-info-circle me-2"></i>
+                        <div className="alert alert-light border border-info text-info py-2 small d-flex align-items-center">
+                            <i className="bi bi-info-circle-fill me-2"></i>
                             Thông tin cá nhân được quản lý bởi nhà trường.
                         </div>
 
-                        <h5 className="text-secondary text-uppercase small fw-bold mt-3">Thông tin liên hệ</h5> <hr />
+                        {/* 1. THÔNG TIN CÁ NHÂN */}
+                        <h5 className="text-secondary text-uppercase small fw-bold mt-3">Thông tin cá nhân</h5> <hr className="mt-1" />
+                        <div className="row mb-3">
+                            <div className="col-sm-4 fw-bold text-muted">Ngày sinh:</div>
+                            <div className="col-sm-8 fw-medium">{profile.dob || "---"}</div>
+                        </div>
+                        {/* 🔥 HIỂN THỊ GIỚI TÍNH */}
+                        <div className="row mb-3">
+                            <div className="col-sm-4 fw-bold text-muted">Giới tính:</div>
+                            <div className="col-sm-8 fw-medium">
+                                {profile.gender === "NAM" ? "Nam" : (profile.gender === "NU" ? "Nữ" : "---")}
+                            </div>
+                        </div>
+                        <div className="row mb-3">
+                            <div className="col-sm-4 fw-bold text-muted">Địa chỉ:</div>
+                            <div className="col-sm-8 fw-medium">{profile.address || "---"}</div>
+                        </div>
+
+                        {/* 2. LIÊN HỆ */}
+                        <h5 className="text-secondary text-uppercase small fw-bold mt-4">Liên hệ</h5> <hr className="mt-1" />
                         <div className="row mb-3">
                             <div className="col-sm-4 fw-bold text-muted">Email công vụ:</div>
-                            <div className="col-sm-8">{profile.email}</div>
+                            <div className="col-sm-8 fw-medium">{profile.email}</div>
                         </div>
                         <div className="row mb-3">
-                            <div className="col-sm-4 fw-bold text-muted">SĐT công việc:</div>
-                            <div className="col-sm-8">{profile.workPhone || "-- Chưa cập nhật --"}</div>
+                            <div className="col-sm-4 fw-bold text-muted">SĐT Cá nhân:</div>
+                            <div className="col-sm-8 fw-medium">{profile.phone || "---"}</div>
                         </div>
-                        
-                        <h5 className="text-secondary text-uppercase small fw-bold mt-4">Thông tin công tác</h5> <hr />
                         <div className="row mb-3">
-                            <div className="col-sm-4 fw-bold text-muted">Phòng ban / Khoa:</div>
+                            <div className="col-sm-4 fw-bold text-muted">SĐT Công việc (Hotline):</div>
+                            <div className="col-sm-8 fw-medium text-primary">{profile.workPhone || "---"}</div>
+                        </div>
+
+                        {/* 3. CÔNG TÁC */}
+                        <h5 className="text-secondary text-uppercase small fw-bold mt-4">Thông tin công tác</h5> <hr className="mt-1" />
+                        <div className="row mb-3">
+                            <div className="col-sm-4 fw-bold text-muted">Phòng ban:</div>
                             <div className="col-sm-8 fw-bold text-primary">{profile.department}</div>
                         </div>
                         <div className="row mb-3">
-                            <div className="col-sm-4 fw-bold text-muted">Chức vụ:</div>
-                            <div className="col-sm-8">{profile.position || "Nhân viên"}</div>
-                        </div>
-                        <div className="row mb-3">
-                            <div className="col-sm-4 fw-bold text-muted">Văn phòng:</div>
-                            <div className="col-sm-8">{profile.officeLocation || "--"}</div>
+                            <div className="col-sm-4 fw-bold text-muted">Văn phòng làm việc:</div>
+                            <div className="col-sm-8 fw-medium">{profile.officeLocation || "---"}</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* ========================================== */}
-            {/* MODAL ĐỔI MẬT KHẨU                         */}
-            {/* ========================================== */}
+            {/* MODAL ĐỔI MẬT KHẨU */}
             {showModal && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                     backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
                 }}>
-                    <div className="bg-white p-4 rounded shadow animate__animated animate__fadeInDown" style={{ width: '400px', maxWidth: '90%' }}>
+                    <div className="bg-white p-4 rounded-4 shadow animate__animated animate__fadeInDown" style={{ width: '400px', maxWidth: '90%' }}>
                         <h4 className="text-center mb-3 text-danger fw-bold">🔒 Đổi Mật Khẩu</h4>
                         
-                        {passError && <div className="alert alert-danger p-2 small">{passError}</div>}
+                        {passError && <div className="alert alert-danger p-2 small text-center">{passError}</div>}
 
                         <div className="mb-3">
                             <label className="form-label fw-bold small">Mật khẩu hiện tại</label>
-                            <input 
-                                type="password" name="oldPassword" className="form-control" 
-                                value={passData.oldPassword} onChange={handlePassInput} 
-                                placeholder="••••••"
-                            />
+                            <input type="password" name="oldPassword" className="form-control" value={passData.oldPassword} onChange={handlePassInput} placeholder="••••••" />
                         </div>
                         <div className="mb-3">
                             <label className="form-label fw-bold small">Mật khẩu mới</label>
-                            <input 
-                                type="password" name="newPassword" className="form-control" 
-                                value={passData.newPassword} onChange={handlePassInput} 
-                                placeholder="Tối thiểu 8 ký tự"
-                            />
+                            <input type="password" name="newPassword" className="form-control" value={passData.newPassword} onChange={handlePassInput} placeholder="Tối thiểu 6 ký tự" />
                         </div>
                         <div className="mb-3">
-                            <label className="form-label fw-bold small">Xác nhận mật khẩu mới</label>
-                            <input 
-                                type="password" name="confirmPassword" className="form-control" 
-                                value={passData.confirmPassword} onChange={handlePassInput} 
-                                placeholder="Nhập lại mật khẩu mới"
-                            />
+                            <label className="form-label fw-bold small">Xác nhận mật khẩu</label>
+                            <input type="password" name="confirmPassword" className="form-control" value={passData.confirmPassword} onChange={handlePassInput} placeholder="Nhập lại mật khẩu mới" />
                         </div>
 
                         <div className="d-flex justify-content-end gap-2 mt-4">
-                            <button className="btn btn-secondary" onClick={() => {setShowModal(false); setPassError("");}}>
-                                Hủy bỏ
-                            </button>
-                            <button className="btn btn-primary" onClick={submitChangePassword}>
-                                Xác nhận đổi
-                            </button>
+                            <button className="btn btn-light text-secondary fw-bold" onClick={() => {setShowModal(false); setPassError("");}}>Hủy bỏ</button>
+                            <button className="btn btn-primary fw-bold px-4" onClick={submitChangePassword}>Xác nhận</button>
                         </div>
                     </div>
                 </div>
