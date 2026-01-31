@@ -36,6 +36,7 @@ import AdminAppointmentManager from "./pages/admin/AdminAppointmentManager";
 import AdminLecturerSchedule from "./pages/admin/AdminLecturerSchedule";
 import AdminSingleLecturerSchedule from "./pages/admin/AdminSingleLecturerSchedule";
 import AdminRequestManager from "./pages/admin/AdminRequestManager";
+import AdminStatistics from "./pages/admin/AdminStatistics";
 
 function App() {
   return (
@@ -110,6 +111,7 @@ function App() {
           <Route path="lecturer-schedules" element={<AdminLecturerSchedule />} />
           <Route path="lecturer-schedules/:lecturerId" element={<AdminSingleLecturerSchedule />} />
           <Route path="procedure-requests" element={<AdminRequestManager />} />
+          <Route path="statistics" element={<AdminStatistics />} />
         </Route>
 
         {/* ======================================================= */}
