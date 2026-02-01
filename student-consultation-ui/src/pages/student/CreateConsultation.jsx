@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import LecturerSelectModal from "../../components/student/LecturerSelectModal.jsx";
+import axios from "axios"; // Khuyên dùng axios thay vì fetch để xử lý lỗi tốt hơn
 
 // Helper tạo giờ tiêu chuẩn (7h - 17h)
 const generateStandardTimes = () => {
@@ -126,12 +127,30 @@ const CreateConsultation = () => {
 
         try {
             const res = await fetch(`${DOMAIN}/api/appointment/create`, {
-                method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                method: "POST", 
+                headers: { 
+                    "Content-Type": "application/json", 
+                    Authorization: `Bearer ${token}` 
+                },
                 body: JSON.stringify(payload),
             });
-            if (!res.ok) throw new Error(await res.text());
+
+            // 🔥 XỬ LÝ LỖI (QUAN TRỌNG)
+            if (!res.ok) {
+                // 1. Đọc dữ liệu lỗi trả về dưới dạng JSON
+                const errorData = await res.json();
+                
+                // 2. Lấy tin nhắn (message)
+                // Nếu Backend đã sửa thành ResponseStatusException thì message sẽ nằm ở errorData.message
+                // Nếu Backend vẫn là RuntimeException thì message nằm lẫn trong errorData.trace hoặc message
+                const errorMessage = errorData.message || JSON.stringify(errorData);
+                
+                throw new Error(errorMessage);
+            }
+
             const newAppt = await res.json();
 
+            // Upload file nếu có
             if (selectedFile && newAppt.id) {
                 const fd = new FormData(); fd.append("file", selectedFile);
                 await fetch(`${DOMAIN}/api/appointment/${newAppt.id}/attachments`, {
@@ -139,10 +158,27 @@ const CreateConsultation = () => {
                 });
             }
 
-            alert("Đăng ký thành công!");
+            alert("✅ Đăng ký thành công!");
             navigate("/student/history");
 
-        } catch (err) { alert("Lỗi: " + err.message); }
+        } catch (err) { 
+            console.error(err);
+            // 🔥 HIỂN THỊ THÔNG BÁO GỌN GÀNG
+            // Nếu tin nhắn có chứa chữ "java.lang..." (do chưa sửa backend) thì ta cắt chuỗi để lấy phần tiếng Việt
+            let displayMsg = err.message;
+            
+            if (displayMsg.includes("java.lang.RuntimeException: ")) {
+                displayMsg = displayMsg.split("java.lang.RuntimeException: ")[1];
+            }
+            
+            // Xóa bớt các ký tự thừa nếu có
+            if (displayMsg.includes("timestamp")) {
+                 // Fallback nếu vẫn hiện json
+                 displayMsg = "⛔ Yêu cầu không hợp lệ hoặc bị giới hạn!";
+            }
+
+            alert(displayMsg);
+        }
     };
 
     return (
@@ -177,32 +213,28 @@ const CreateConsultation = () => {
                             ) : (
                                 // --- Trường hợp: ĐÃ CHỌN GIẢNG VIÊN ---
                                 <div className="card border-success shadow-sm p-3 d-flex flex-row align-items-center justify-content-between bg-white">
-    <div className="d-flex align-items-center">
-        <img 
-            src={selectedLecturerObj.avatarUrl || selectedLecturerObj.avatar || "https://via.placeholder.com/50"} 
-            alt="avt" 
-            className="rounded-circle border me-3"
-            style={{width: "50px", height: "50px", objectFit: "cover"}}
-        />
-        <div>
-            {/* 🔥 SỬA LỖI Ở ĐÂY: Kiểm tra cả 2 trường hợp (DTO và Entity) */}
-            <h6 className="fw-bold mb-0 text-success">
-                {selectedLecturerObj.academicDegree ? `${selectedLecturerObj.academicDegree}. ` : ""}
-                {selectedLecturerObj.fullName || selectedLecturerObj.user?.fullName || "Tên giảng viên"}
-            </h6>
-            
-            <small className="text-muted d-block">
-                {/* 🔥 SỬA CẢ Ở ĐÂY NỮA */}
-                Khoa {selectedLecturerObj.department} 
-                {/* Nếu bạn muốn ẩn mã thì xóa đoạn dưới, muốn hiện thì dùng code an toàn này: */}
-                {/* • Mã: {selectedLecturerObj.username || selectedLecturerObj.user?.username || "---"} */}
-            </small>
-        </div>
-    </div>
-    <button className="btn btn-outline-secondary btn-sm" onClick={() => setShowLecModal(true)}>
-        <i className="bi bi-pencil me-1"></i> Chọn lại
-    </button>
-</div>
+                                    <div className="d-flex align-items-center">
+                                        <img 
+                                            src={selectedLecturerObj.avatarUrl || selectedLecturerObj.avatar || "https://via.placeholder.com/50"} 
+                                            alt="avt" 
+                                            className="rounded-circle border me-3"
+                                            style={{width: "50px", height: "50px", objectFit: "cover"}}
+                                        />
+                                        <div>
+                                            <h6 className="fw-bold mb-0 text-success">
+                                                {selectedLecturerObj.academicDegree ? `${selectedLecturerObj.academicDegree}. ` : ""}
+                                                {selectedLecturerObj.fullName || selectedLecturerObj.user?.fullName || "Tên giảng viên"}
+                                            </h6>
+                                            
+                                            <small className="text-muted d-block">
+                                                Khoa {selectedLecturerObj.department} 
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <button className="btn btn-outline-secondary btn-sm" onClick={() => setShowLecModal(true)}>
+                                        <i className="bi bi-pencil me-1"></i> Chọn lại
+                                    </button>
+                                </div>
                             )}
                         </div>
 
@@ -237,7 +269,7 @@ const CreateConsultation = () => {
                             {isQueueing && form.date && (
                                 <div className="alert alert-warning mt-2 py-2 small d-flex align-items-center">
                                     <i className="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
-                                    <div><strong>Lịch đã kín.</strong> Yêu cầu sẽ được đưa vào hàng chờ.</div>
+                                    <div><strong>Lịch đã kín hoặc giảng viên chưa đăng ký lịch.</strong> Yêu cầu sẽ được đưa vào hàng chờ.</div>
                                 </div>
                             )}
                             {endTimePreview && <div className="alert alert-info mt-2 py-2 small">ℹ️ Kết thúc dự kiến: <strong>{endTimePreview}</strong></div>}

@@ -83,21 +83,8 @@ export default function AdminSettings() {
                                     <div className="form-text">Số lượng yêu cầu tối đa một sinh viên được tạo trong 24h.</div>
                                 </div>
 
-                                {/* 3. Giới hạn đặt lịch */}
-                                <div className="mb-4">
-                                    <label className="form-label fw-bold">Thời gian đặt lịch trước (Ngày)</label>
-                                    <input 
-                                        type="number" 
-                                        className="form-control"
-                                        value={config.bookingWindowDays}
-                                        onChange={(e) => setConfig({...config, bookingWindowDays: e.target.value})}
-                                    />
-                                    <div className="form-text">Ví dụ: Nhập 7 - Sinh viên chỉ thấy lịch rảnh trong 7 ngày tới.</div>
-                                </div>
 
-                                <hr className="my-4"/>
-
-                                {/* 4. Chế độ bảo trì (Switch) */}
+                                {/* 3. Chế độ bảo trì (Switch) */}
                                 <div className="mb-4 p-3 bg-light rounded border d-flex justify-content-between align-items-center">
                                     <div>
                                         <label className="form-check-label fw-bold mb-1 d-block text-danger">Chế độ bảo trì</label>
@@ -133,7 +120,6 @@ export default function AdminSettings() {
                         <hr />
                         <ul className="mb-0 ps-3">
                             <li className="mb-2"><strong>Giới hạn yêu cầu:</strong> Giúp ngăn chặn việc spam hệ thống.</li>
-                            <li className="mb-2"><strong>Thời gian đặt lịch:</strong> Giúp giảng viên kiểm soát lịch trình tốt hơn.</li>
                             <li><strong>Chế độ bảo trì:</strong> Dùng khi bạn cần nâng cấp hệ thống hoặc sửa lỗi gấp.</li>
                         </ul>
                     </div>
