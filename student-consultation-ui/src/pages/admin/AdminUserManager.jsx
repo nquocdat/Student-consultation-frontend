@@ -102,22 +102,16 @@ export default function AdminUserManager() {
 
     // 🔍 2. LOGIC LỌC DANH SÁCH (FILTER)
     const filteredUsers = users.filter(u => {
-        // Điều kiện 1: Phải đúng Role (Tab đang chọn)
         const matchRole = u.role === activeTab;
-
-        // Điều kiện 2: Phải khớp từ khóa tìm kiếm (nếu có)
-        // Chuyển hết về chữ thường để tìm không phân biệt hoa thường
         const keyword = searchTerm.toLowerCase();
         const matchName = u.fullName?.toLowerCase().includes(keyword);
         const matchUsername = u.username?.toLowerCase().includes(keyword);
-
-        // Logic: Đúng Role VÀ (Đúng tên HOẶC Đúng mã số)
         return matchRole && (matchName || matchUsername);
     });
 
     return (
         <div className="container-fluid p-4 animate__animated animate__fadeIn bg-light" style={{ minHeight: '100vh' }}>
-            {/* --- HEADER ĐÃ ĐƯỢC LÀM ĐẸP --- */}
+            {/* --- HEADER --- */}
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm">
                 <h4 className="fw-bold text-primary m-0 mb-3 mb-md-0">
                     <i className="bi bi-people-fill me-2"></i>
@@ -126,7 +120,6 @@ export default function AdminUserManager() {
 
                 <div className="d-flex align-items-center gap-3">
                     {/* 🔍 THANH TÌM KIẾM */}
-                    {/* Thêm height: '38px' để cố định chiều cao */}
                     <div className="input-group shadow-sm rounded-pill overflow-hidden border"
                         style={{ maxWidth: '280px', height: '38px' }}>
                         <span className="input-group-text bg-white border-0 ps-3 d-flex align-items-center">
@@ -134,16 +127,15 @@ export default function AdminUserManager() {
                         </span>
                         <input
                             type="text"
-                            className="form-control border-0 ps-2 shadow-none h-100" // Thêm h-100 để input full chiều cao
+                            className="form-control border-0 ps-2 shadow-none h-100"
                             placeholder="Tìm kiếm..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{ fontSize: '0.9rem', paddingTop: '8px' }} // Chỉnh font và padding cho cân giữa
+                            style={{ fontSize: '0.9rem', paddingTop: '8px' }}
                         />
                     </div>
 
                     {/* ➕ NÚT THÊM MỚI */}
-                    {/* Chỉnh height về 38px cho bằng thanh tìm kiếm */}
                     <button
                         className="btn btn-primary btn-sm rounded-pill px-3 shadow-sm d-flex align-items-center gap-2"
                         onClick={handleOpenAdd}
@@ -155,7 +147,7 @@ export default function AdminUserManager() {
                 </div>
             </div>
 
-            {/* TAB LIST - GIỮ NGUYÊN NHƯNG THÊM CHÚT MARGIN */}
+            {/* TAB LIST */}
             <ul className="nav nav-tabs mb-4 border-bottom-0 ms-2">
                 {['STUDENT', 'LECTURER', 'STAFF', 'ADMIN'].map(role => (
                     <li className="nav-item" key={role}>
@@ -182,7 +174,8 @@ export default function AdminUserManager() {
                                 {activeTab === 'STUDENT' && <><th className="py-3">Lớp/Ngành</th></>}
                                 {activeTab === 'LECTURER' && <><th className="py-3">Khoa/Chức vụ</th></>}
                                 {activeTab === 'STAFF' && <><th className="py-3">Phòng ban</th></>}
-                                <th className="text-end pe-4 py-3">Thao tác</th>
+                                {/* ẨN CỘT THAO TÁC NẾU LÀ ADMIN */}
+                                {activeTab !== 'ADMIN' && <th className="text-end pe-4 py-3">Thao tác</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -234,15 +227,17 @@ export default function AdminUserManager() {
                                             {activeTab === 'LECTURER' && <td>{details.department || "-"} <br /> <small className="text-muted">{details.position}</small></td>}
                                             {activeTab === 'STAFF' && <td>{details.department || "-"} <br /> <small className="text-muted">{details.position}</small></td>}
 
-                                            {/* Cột Thao tác */}
-                                            <td className="text-end pe-4">
-                                                <button
-                                                    className={`btn btn-sm rounded-pill px-3 fw-bold border ${isActive ? 'btn-white text-danger border-danger-subtle hover-danger' : 'btn-success text-white border-success'}`}
-                                                    onClick={(e) => handleLockUser(u.id, isActive, e)}
-                                                >
-                                                    {isActive ? <><i className="bi bi-lock me-1"></i> Khóa</> : <><i className="bi bi-unlock-fill me-1"></i> Mở</>}
-                                                </button>
-                                            </td>
+                                            {/* Cột Thao tác - ẨN NẾU LÀ ADMIN */}
+                                            {activeTab !== 'ADMIN' && (
+                                                <td className="text-end pe-4">
+                                                    <button
+                                                        className={`btn btn-sm rounded-pill px-3 fw-bold border ${isActive ? 'btn-white text-danger border-danger-subtle hover-danger' : 'btn-success text-white border-success'}`}
+                                                        onClick={(e) => handleLockUser(u.id, isActive, e)}
+                                                    >
+                                                        {isActive ? <><i className="bi bi-lock me-1"></i> Khóa</> : <><i className="bi bi-unlock-fill me-1"></i> Mở</>}
+                                                    </button>
+                                                </td>
+                                            )}
                                         </tr>
                                     )
                                 })
@@ -252,9 +247,9 @@ export default function AdminUserManager() {
                 </div>
             </div>
 
-            {/* ... PHẦN MODAL GIỮ NGUYÊN ... */}
+            {/* --- MODAL --- */}
             {showModal && (
-                <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                <div className="modal d-block animate__animated animate__fadeIn" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
                     <div className="modal-dialog modal-dialog-centered modal-lg">
                         <div className="modal-content border-0 shadow rounded-4 overflow-hidden">
                             <div className="modal-header bg-primary text-white px-4 py-3">
@@ -264,8 +259,6 @@ export default function AdminUserManager() {
                                 <button className="btn-close btn-close-white" onClick={() => setShowModal(false)}></button>
                             </div>
                             <div className="modal-body p-4 bg-light">
-                                {/* ... GIỮ NGUYÊN CODE FORM ... */}
-                                {/* Bạn copy lại phần form body từ code cũ vào đây nhé, chỉ thay đổi class container bên ngoài cho đẹp thôi */}
                                 <div className="card border-0 shadow-sm p-3">
                                     <div className="mb-3">
                                         <label className="fw-bold form-label">Vai trò hệ thống</label>
@@ -282,7 +275,7 @@ export default function AdminUserManager() {
 
                                         <div className="col-12"><hr className="text-muted opacity-25" /></div>
 
-                                        {/* Các trường riêng (Giữ nguyên logic hiển thị) */}
+                                        {/* Các trường riêng */}
                                         {formData.role === 'STUDENT' && <><div className="col-md-4"><label className="small">Lớp</label><input className="form-control" value={formData.className} onChange={e => setFormData({ ...formData, className: e.target.value })} /></div><div className="col-md-4"><label className="small">Ngành</label><input className="form-control" value={formData.major} onChange={e => setFormData({ ...formData, major: e.target.value })} /></div><div className="col-md-4"><label className="small">Khóa</label><input className="form-control" value={formData.course} onChange={e => setFormData({ ...formData, course: e.target.value })} /></div></>}
                                         {(formData.role === 'LECTURER' || formData.role === 'STAFF') && <><div className="col-md-6"><label className="small">Phòng/Khoa</label><input className="form-control" value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} /></div><div className="col-md-6"><label className="small">Chức vụ</label><input className="form-control" value={formData.position} onChange={e => setFormData({ ...formData, position: e.target.value })} /></div></>}
                                         {formData.role === 'LECTURER' && <div className="col-12"><div className="row g-3"><div className="col-md-4"><label className="small">Học hàm</label><input className="form-control" value={formData.academicRank} onChange={e => setFormData({ ...formData, academicRank: e.target.value })} /></div><div className="col-md-4"><label className="small">Học vị</label><input className="form-control" value={formData.academicDegree} onChange={e => setFormData({ ...formData, academicDegree: e.target.value })} /></div><div className="col-md-4"><label className="small">Văn phòng</label><input className="form-control" value={formData.office} onChange={e => setFormData({ ...formData, office: e.target.value })} /></div></div></div>}
