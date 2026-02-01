@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react"; // ✅ 1. Import thêm useEffect
 import { useNavigate } from "react-router-dom";
 import authApi from "../../api/authApi";
 import { saveAuth } from "../../utils/auth";
@@ -18,11 +18,31 @@ const Login = () => {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
 
-  // --- LOGIC ĐĂNG NHẬP ---
+  // ✅ 2. STATE LƯU EMAIL HỖ TRỢ (Mặc định là email cũ)
+  const [supportEmail, setSupportEmail] = useState("support@hunre.edu.vn");
+
+  // ✅ 3. GỌI API LẤY CẤU HÌNH KHI VÀO TRANG
+  useEffect(() => {
+    const fetchSystemConfig = async () => {
+      try {
+        // Gọi API công khai lấy config
+        const res = await axios.get("http://localhost:8080/api/auth/system-config");
+        if (res.data && res.data.supportEmail) {
+          setSupportEmail(res.data.supportEmail);
+        }
+      } catch (err) {
+        console.error("Không lấy được email hỗ trợ:", err);
+        // Nếu lỗi thì giữ nguyên email mặc định đã set ở trên
+      }
+    };
+    fetchSystemConfig();
+  }, []);
+
+  // --- LOGIC ĐĂNG NHẬP (GIỮ NGUYÊN) ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setIsLoading(true); // Bắt đầu xoay
+    setIsLoading(true);
 
     try {
       const res = await authApi.login(username, password);
@@ -30,19 +50,16 @@ const Login = () => {
       
       saveAuth(token, role);
 
-      // Thêm chút delay giả lập trải nghiệm tốt hơn (tùy chọn)
       setTimeout(() => {
-        // 👇 ĐÃ THÊM LOGIC ĐIỀU HƯỚNG CHO ADMIN
         if (role === "STUDENT") {
             navigate("/student/create-request");
         } else if (role === "LECTURER") {
             navigate("/lecturer/dashboard");
         } else if (role === "STAFF") {
             navigate("/staff/procedures");
-        } else if (role === "ADMIN") {  // 👈 Thêm dòng này
+        } else if (role === "ADMIN") {
             navigate("/admin/dashboard");
         } else {
-            // Trường hợp role lạ hoặc chưa định nghĩa
             navigate("/"); 
         }
       }, 500);
@@ -50,11 +67,11 @@ const Login = () => {
     } catch (err) {
       console.error(err);
       setError("❌ Sai tài khoản hoặc mật khẩu!");
-      setIsLoading(false); // ❌ Lỗi thì phải tắt xoay ngay
+      setIsLoading(false);
     }
   };
 
-  // --- LOGIC XỬ LÝ QUÊN MẬT KHẨU ---
+  // --- LOGIC XỬ LÝ QUÊN MẬT KHẨU (GIỮ NGUYÊN) ---
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     if(!email) {
@@ -67,12 +84,9 @@ const Login = () => {
 
     try {
         const response = await axios.post(`http://localhost:8080/api/auth/forgot-password?email=${email}`);
-
         alert(response.data); 
-        
         setIsForgotPassword(false); 
         setEmail("");
-        
     } catch (err) {
         console.error("Lỗi gửi mail:", err);
         const errorMsg = err.response ? err.response.data : "Không thể kết nối đến Server!";
@@ -189,9 +203,10 @@ const Login = () => {
             </form>
         )}
 
+        {/* ✅ 4. HIỂN THỊ EMAIL ĐỘNG TỪ STATE */}
         <div className="footer-text">
           Hệ thống hỗ trợ sinh viên - HUNRE <br/>
-          Hỗ trợ kỹ thuật: support@hunre.edu.vn
+          Hỗ trợ kỹ thuật: {supportEmail}
         </div>
       </div>
     </div>
