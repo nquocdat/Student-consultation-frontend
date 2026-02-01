@@ -134,68 +134,100 @@ const StudentLayout = () => {
           Student Portal
         </h3>
 
-        <div style={{ flex: 1, position: "relative", zIndex: 1 }}>
-          <small style={{
-            textTransform: "uppercase",
-            marginBottom: 12,
-            display: "block",
-            fontWeight: "700",
-            fontSize: "11px",
-            color: "#94a3b8",
-            letterSpacing: "1px"
-          }}>
-            📚 Thủ Tục
-          </small>
+       <div style={{ flex: 1, position: "relative", zIndex: 1 }}>
+    
+    {/* 🔥 THÊM MỚI: PHẦN THÔNG BÁO (ĐẶT TRÊN CÙNG) */}
+    <small style={{
+        textTransform: "uppercase",
+        marginBottom: 12,
+        display: "block",
+        fontWeight: "700",
+        fontSize: "11px",
+        color: "#94a3b8",
+        letterSpacing: "1px"
+    }}>
+        🔔 Thông Tin
+    </small>
 
-          <div className="mb-3">
-            {/* 1. Link đến Catalog */}
-            <NavLink to="/student/procedures/catalog" style={linkStyle}>
-              <span>📂</span>
-              <span>Danh mục thủ tục</span>
-            </NavLink>
+    <div className="mb-3">
+        <NavLink to="/student/notifications" style={linkStyle}>
+            <span>📢</span> {/* Hoặc dùng icon chuông 🔔 */}
+            <span>Thông báo chung</span>
+        </NavLink>
+    </div>
 
-            {/* 2. Link đến Create */}
-            <NavLink to="/student/procedures/create" style={linkStyle}>
-              <span>📝</span>
-              <span>Tạo yêu cầu thủ tục</span>
-            </NavLink>
+    {/* Đường kẻ ngăn cách */}
+    <hr style={{
+        border: "none",
+        height: "1px",
+        background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)",
+        margin: "24px 0"
+    }} />
 
-            {/* 3. Link đến History */}
-            <NavLink to="/student/procedures/history" style={linkStyle}>
-              <span>🔍</span>
-              <span>Xem kết quả hồ sơ</span>
-            </NavLink>
-          </div>
+    {/* --- PHẦN CŨ: THỦ TỤC --- */}
+    <small style={{
+        textTransform: "uppercase",
+        marginBottom: 12,
+        display: "block",
+        fontWeight: "700",
+        fontSize: "11px",
+        color: "#94a3b8",
+        letterSpacing: "1px"
+    }}>
+        📚 Thủ Tục
+    </small>
 
-          <hr style={{
-            border: "none",
-            height: "1px",
-            background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)",
-            margin: "24px 0"
-          }} />
+    <div className="mb-3">
+        {/* 1. Link đến Catalog */}
+        <NavLink to="/student/procedures/catalog" style={linkStyle}>
+            <span>📂</span>
+            <span>Danh mục thủ tục</span>
+        </NavLink>
 
-          <small style={{
-            textTransform: "uppercase",
-            marginBottom: 12,
-            display: "block",
-            fontWeight: "700",
-            fontSize: "11px",
-            color: "#94a3b8",
-            letterSpacing: "1px"
-          }}>
-            💡 Tư Vấn & Hỗ Trợ
-          </small>
+        {/* 2. Link đến Create */}
+        <NavLink to="/student/procedures/create" style={linkStyle}>
+            <span>📝</span>
+            <span>Tạo yêu cầu thủ tục</span>
+        </NavLink>
 
-          <NavLink to="/student/create-request" style={linkStyle}>
-            <span>💬</span>
-            <span>Tạo yêu cầu tư vấn</span>
-          </NavLink>
+        {/* 3. Link đến History */}
+        <NavLink to="/student/procedures/history" style={linkStyle}>
+            <span>🔍</span>
+            <span>Xem kết quả hồ sơ</span>
+        </NavLink>
+    </div>
 
-          <NavLink to="/student/history" style={linkStyle}>
-            <span>📋</span>
-            <span>Lịch sử tư vấn</span>
-          </NavLink>
-        </div>
+    <hr style={{
+        border: "none",
+        height: "1px",
+        background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)",
+        margin: "24px 0"
+    }} />
+
+    {/* --- PHẦN CŨ: TƯ VẤN --- */}
+    <small style={{
+        textTransform: "uppercase",
+        marginBottom: 12,
+        display: "block",
+        fontWeight: "700",
+        fontSize: "11px",
+        color: "#94a3b8",
+        letterSpacing: "1px"
+    }}>
+        💡 Tư Vấn & Hỗ Trợ
+    </small>
+
+    <NavLink to="/student/create-request" style={linkStyle}>
+        <span>💬</span>
+        <span>Tạo yêu cầu tư vấn</span>
+    </NavLink>
+
+    <NavLink to="/student/history" style={linkStyle}>
+        <span>📋</span>
+        <span>Lịch sử tư vấn</span>
+    </NavLink>
+    
+</div>
 
         {/* --- MODERN FOOTER: PROFILE & LOGOUT --- */}
         <div style={footerStyle}>

@@ -114,6 +114,11 @@ export default function StaffSidebar() {
                         <span>Quản lý thủ tục</span>
                     </NavLink>
                 </li>
+                <li className="nav-item mb-2">
+    <NavLink to="/staff/notifications" className={({ isActive }) => `nav-link text-white ${isActive ? "active bg-primary" : ""}`}>
+        <i className="bi bi-bell-fill me-2"></i> Thông báo chung
+    </NavLink>
+</li>
                 
                 <li className="nav-item">
                     <NavLink 

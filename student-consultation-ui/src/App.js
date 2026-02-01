@@ -13,6 +13,7 @@ import LecturerDetail from "./pages/lecturer/LecturerDetail";
 import StudentProcedureCatalog from "./components/student/StudentProcedureCatalog";
 import StudentProcedureCreate from "./components/student/StudentProcedureCreate";
 import StudentProcedureHistory from "./components/student/StudentProcedureHistory";
+import StudentNotifications from "./pages/student/StudentNotifications";
 
 // --- LECTURER IMPORTS ---
 import LecturerLayout from "./components/lecturer/LecturerLayout";
@@ -21,11 +22,13 @@ import LecturerAppointments from "./pages/lecturer/LecturerAppointments";
 import LecturerProfile from "./pages/lecturer/LecturerProfile";
 import LecturerSchedule from "./pages/lecturer/LecturerSchedule";
 import LecturerStatistics from "./pages/lecturer/LecturerStatistics";
+import LecturerNotifications from "./pages/lecturer/LecturerNotifications";
 
 // --- STAFF IMPORTS ---
 import StaffLayout from "./components/staff/StaffLayout";
 import StaffProcedureManager from "./pages/staff/StaffProcedureManager";
 import StaffProfile from "./pages/staff/StaffProfile";
+import StaffNotifications from "./pages/staff/StaffNotifications";
 
 // --- ADMIN IMPORTS ---
 import AdminLayout from "./components/admin/AdminLayout";
@@ -37,6 +40,7 @@ import AdminLecturerSchedule from "./pages/admin/AdminLecturerSchedule";
 import AdminSingleLecturerSchedule from "./pages/admin/AdminSingleLecturerSchedule";
 import AdminRequestManager from "./pages/admin/AdminRequestManager";
 import AdminStatistics from "./pages/admin/AdminStatistics";
+import AdminNotifications from "./pages/admin/AdminNotifications";
 
 function App() {
   return (
@@ -68,6 +72,8 @@ function App() {
           <Route path="procedures/create" element={<StudentProcedureCreate />} />
           <Route path="procedures/history" element={<StudentProcedureHistory />} />
 
+          <Route path="notifications" element={<StudentNotifications />} />
+
           {/* Cá nhân */}
           <Route path="profile" element={<StudentProfile />} />
         </Route>
@@ -84,6 +90,7 @@ function App() {
           <Route path="schedule" element={<LecturerSchedule />} />
           <Route path="statistics" element={<LecturerStatistics />} />
           <Route path="profile" element={<LecturerProfile />} />
+          <Route path="notifications" element={<LecturerNotifications />} />
         </Route>
 
         {/* ======================================================= */}
@@ -95,6 +102,7 @@ function App() {
 
           <Route path="procedures" element={<StaffProcedureManager />} />
           <Route path="profile" element={<StaffProfile />} />
+          <Route path="notifications" element={<StaffNotifications />} />
         </Route>
 
         {/* ======================================================= */}
@@ -112,6 +120,7 @@ function App() {
           <Route path="lecturer-schedules/:lecturerId" element={<AdminSingleLecturerSchedule />} />
           <Route path="procedure-requests" element={<AdminRequestManager />} />
           <Route path="statistics" element={<AdminStatistics />} />
+          <Route path="notifications" element={<AdminNotifications />} />
         </Route>
 
         {/* ======================================================= */}
