@@ -43,6 +43,7 @@ import AdminRequestManager from "./pages/admin/AdminRequestManager";
 import AdminStatistics from "./pages/admin/AdminStatistics";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminLogs from "./pages/admin/AdminLogs";
 
 function App() {
   return (
@@ -127,6 +128,7 @@ function App() {
         <Route path="statistics" element={<AdminStatistics />} />
         <Route path="notifications" element={<AdminNotifications />} />
         <Route path="settings" element={<AdminSettings />} />
+        <Route path="logs" element={<AdminLogs />} />
       </Route>
 
       {/* ======================================================= */}
