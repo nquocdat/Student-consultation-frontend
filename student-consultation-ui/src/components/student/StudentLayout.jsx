@@ -5,7 +5,7 @@ import axios from "axios";
 
 const StudentLayout = () => {
   const navigate = useNavigate();
-  const DOMAIN = "http://localhost:8080";
+  const DOMAIN = "https://student-consultation-nqd.onrender.com";
 
   const [student, setStudent] = useState({
     fullName: "Đang tải...",

@@ -8,7 +8,7 @@ import StaffRequestTable from "./StaffRequestTable";
 import StaffUpdateModal from "./StaffUpdateModal";
 
 export default function StaffProcedureManager() {
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     

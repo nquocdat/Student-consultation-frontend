@@ -27,7 +27,7 @@ export default function ChatAssistant() {
 
         try {
             const token = localStorage.getItem("token");
-            const res = await axios.post("http://localhost:8080/api/chat/ask", 
+            const res = await axios.post("https://student-consultation-nqd.onrender.com/api/chat/ask", 
                 { question: userMsg },
                 { headers: { Authorization: `Bearer ${token}` } }
             );

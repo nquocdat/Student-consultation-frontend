@@ -2,7 +2,7 @@ import axios from "axios";
 
 const axiosClient = axios.create({
    
-    baseURL: "http://localhost:8080", 
+    baseURL: "https://student-consultation-nqd.onrender.com", 
 });
 
 // 1. REQUEST INTERCEPTOR (Giữ nguyên đoạn code cũ của bạn)

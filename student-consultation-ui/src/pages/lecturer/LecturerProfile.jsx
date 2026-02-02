@@ -5,7 +5,7 @@ const LecturerProfile = () => {
     // ==========================================
     // 1. CẤU HÌNH & STATE
     // ==========================================
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
     
     // ✅ Dùng API /me (Tự lấy thông tin người đang đăng nhập)
     const API_GET_PROFILE = `${DOMAIN}/api/lecturers/me`; 

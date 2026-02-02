@@ -32,7 +32,7 @@ const AdminLogs = () => {
         const fetchLogs = async () => {
             const token = localStorage.getItem("token");
             try {
-                const res = await axios.get("http://localhost:8080/api/admin/logs", {
+                const res = await axios.get("https://student-consultation-nqd.onrender.com/api/admin/logs", {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setAllLogs(res.data);

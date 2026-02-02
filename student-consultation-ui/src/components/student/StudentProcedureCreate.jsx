@@ -5,7 +5,7 @@ import axios from "axios";
 export default function StudentProcedureCreate() {
     const location = useLocation();
     const navigate = useNavigate();
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
 
     const [procedures, setProcedures] = useState([]);
     // Tự động điền ID nếu từ trang Catalog chuyển sang

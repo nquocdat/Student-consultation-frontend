@@ -32,7 +32,7 @@ export default function AdminStatistics() {
                 const token = localStorage.getItem("token");
                 
                 // 🔥 TẠO URL DỰA TRÊN BỘ LỌC
-                let url = `http://localhost:8080/api/admin/stats?mode=${filterMode}`;
+                let url = `https://student-consultation-nqd.onrender.com/api/admin/stats?mode=${filterMode}`;
                 
                 if (filterMode === 'MONTH') {
                     url += `&month=${selectedMonth}&year=${selectedYear}`;

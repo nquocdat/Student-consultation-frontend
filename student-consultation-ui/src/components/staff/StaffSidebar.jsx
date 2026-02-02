@@ -4,7 +4,7 @@ import axios from "axios"; // Nhớ import axios
 
 export default function StaffSidebar() {
     const navigate = useNavigate();
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
 
     // State lưu thông tin người dùng trên Sidebar
     const [currentUser, setCurrentUser] = useState({

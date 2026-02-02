@@ -13,7 +13,7 @@ export default function AdminNotifications() {
     const fetchNotifications = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await axios.get("http://localhost:8080/api/notifications", {
+            const res = await axios.get("https://student-consultation-nqd.onrender.com/api/notifications", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setNotifications(res.data);
@@ -29,7 +29,7 @@ export default function AdminNotifications() {
         setLoading(true);
         try {
             const token = localStorage.getItem("token");
-            await axios.post("http://localhost:8080/api/notifications", newNotif, {
+            await axios.post("https://student-consultation-nqd.onrender.com/api/notifications", newNotif, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             
@@ -48,7 +48,7 @@ export default function AdminNotifications() {
         if(!window.confirm("Xóa thông báo này?")) return;
         try {
             const token = localStorage.getItem("token");
-            await axios.delete(`http://localhost:8080/api/notifications/${id}`, {
+            await axios.delete(`https://student-consultation-nqd.onrender.com/api/notifications/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchNotifications();

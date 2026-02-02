@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8080/api/auth";
+const API_URL = "https://student-consultation-nqd.onrender.com/api/auth";
 
 const authApi = {
   login: (username, password) => {

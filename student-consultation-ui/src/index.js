@@ -16,7 +16,7 @@ import { BrowserRouter } from 'react-router-dom';
 // ========================================================
 
 // A. Thiết lập đường dẫn gốc (Sau này gọi api chỉ cần gõ "/students/..." là được)
-axios.defaults.baseURL = "http://localhost:8080";
+axios.defaults.baseURL = "https://student-consultation-nqd.onrender.com";
 
 // B. REQUEST INTERCEPTOR: Tự động gắn Token vào mọi request
 axios.interceptors.request.use(

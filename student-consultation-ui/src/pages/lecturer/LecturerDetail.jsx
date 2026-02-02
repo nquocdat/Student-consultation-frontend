@@ -9,7 +9,7 @@ const LecturerDetail = () => {
 
     useEffect(() => {
         // API này giờ trả về LecturerDTO (dạng phẳng)
-        fetch(`http://localhost:8080/api/lecturers/${id}`)
+        fetch(`https://student-consultation-nqd.onrender.com/api/lecturers/${id}`)
             .then(res => {
                 if (!res.ok) throw new Error("Không tìm thấy giảng viên");
                 return res.json();

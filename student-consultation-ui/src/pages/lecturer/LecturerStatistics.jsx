@@ -13,7 +13,7 @@ const LecturerStatistics = () => {
         const fetchData = async () => {
             try {
                 const token = localStorage.getItem("token");
-                const res = await axios.get("http://localhost:8080/api/appointment/lecturer/my", {
+                const res = await axios.get("https://student-consultation-nqd.onrender.com/api/appointment/lecturer/my", {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setAppointments(res.data);
@@ -73,7 +73,7 @@ const LecturerStatistics = () => {
         try {
             const token = localStorage.getItem("token");
             if (!token) return;
-            const url = `http://localhost:8080/api/appointment/${file.id}/download`;
+            const url = `https://student-consultation-nqd.onrender.com/api/appointment/${file.id}/download`;
             const res = await axios.get(url, { responseType: "blob", headers: { Authorization: `Bearer ${token}` } });
             
             const blob = new Blob([res.data], { type: file.fileType || "application/octet-stream" });

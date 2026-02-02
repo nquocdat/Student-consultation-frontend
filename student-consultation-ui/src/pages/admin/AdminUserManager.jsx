@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 export default function AdminUserManager() {
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
 

@@ -26,7 +26,7 @@ const Login = () => {
     const fetchSystemConfig = async () => {
       try {
         // Gọi API công khai lấy config
-        const res = await axios.get("http://localhost:8080/api/auth/system-config");
+        const res = await axios.get("https://student-consultation-nqd.onrender.com/api/auth/system-config");
         if (res.data && res.data.supportEmail) {
           setSupportEmail(res.data.supportEmail);
         }
@@ -83,7 +83,7 @@ const Login = () => {
     setError("");
 
     try {
-        const response = await axios.post(`http://localhost:8080/api/auth/forgot-password?email=${email}`);
+        const response = await axios.post(`https://student-consultation-nqd.onrender.com/api/auth/forgot-password?email=${email}`);
         alert(response.data); 
         setIsForgotPassword(false); 
         setEmail("");

@@ -3,7 +3,7 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 
 export default function AdminDashboard() {
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
     const [loading, setLoading] = useState(true);
 
     // State lưu trữ thống kê

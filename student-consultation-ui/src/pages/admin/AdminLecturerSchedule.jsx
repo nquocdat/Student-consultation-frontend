@@ -3,7 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom"; // ✅ 1. Import useNavigate
 
 export default function AdminLecturerSchedule() {
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
     const navigate = useNavigate(); // ✅ 2. Hook điều hướng
 
     // --- STATE CŨ (XEM THEO NGÀY) ---

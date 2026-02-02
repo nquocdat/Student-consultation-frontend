@@ -23,7 +23,7 @@ const ConsultationHistory = () => {
     // 1. Load Data
     const loadData = () => {
         if (!token) return;
-        fetch("http://localhost:8080/api/appointment/my", {
+        fetch("https://student-consultation-nqd.onrender.com/api/appointment/my", {
             headers: { Authorization: `Bearer ${token}` }
         })
             .then(res => res.json())
@@ -152,7 +152,7 @@ const ConsultationHistory = () => {
         return `${day}/${month}/${year}`;
     };
     const handleDownload = (attachmentId, fileName) => {
-        fetch(`http://localhost:8080/api/appointment/${attachmentId}/download`, {
+        fetch(`https://student-consultation-nqd.onrender.com/api/appointment/${attachmentId}/download`, {
             method: 'GET', headers: { 'Authorization': `Bearer ${token}` },
         }).then(res => res.blob()).then(blob => {
             const url = window.URL.createObjectURL(blob);
@@ -165,13 +165,13 @@ const ConsultationHistory = () => {
     const handleCancel = (appt) => {
         if (appt.statusCode === 'PENDING') {
             if (!window.confirm("Bạn có chắc chắn muốn hủy yêu cầu này không?")) return;
-            fetch(`http://localhost:8080/api/appointment/${appt.id}/cancel/student`, {
+            fetch(`https://student-consultation-nqd.onrender.com/api/appointment/${appt.id}/cancel/student`, {
                 method: "PUT", headers: { Authorization: `Bearer ${token}` }
             }).then(res => { if (res.ok) { alert("Đã hủy thành công"); loadData(); } else alert("Lỗi khi hủy."); });
         } else if (appt.statusCode === 'APPROVED') {
             const reason = window.prompt("Nhập lý do xin hủy:");
             if (reason === null || reason.trim() === "") return;
-            fetch(`http://localhost:8080/api/appointment/${appt.id}/cancel/student?cancelReason=${encodeURIComponent(reason)}`, {
+            fetch(`https://student-consultation-nqd.onrender.com/api/appointment/${appt.id}/cancel/student?cancelReason=${encodeURIComponent(reason)}`, {
                 method: "PUT", headers: { Authorization: `Bearer ${token}` }
             }).then(res => { if (res.ok) { alert("Đã gửi yêu cầu."); loadData(); } else alert("Lỗi gửi yêu cầu."); });
         }

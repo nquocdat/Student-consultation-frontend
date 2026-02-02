@@ -4,7 +4,7 @@ import axios from "axios";
 
 export default function StudentProcedureCatalog() {
     const navigate = useNavigate();
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
     
     // State dữ liệu gốc
     const [procedures, setProcedures] = useState([]);

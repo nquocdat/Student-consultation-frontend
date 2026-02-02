@@ -5,7 +5,7 @@ const StaffProfile = () => {
     // ==========================================
     // 1. CẤU HÌNH & STATE
     // ==========================================
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
     
     // API Endpoints cho Staff
     const API_GET_PROFILE = `${DOMAIN}/api/staff/me`; 

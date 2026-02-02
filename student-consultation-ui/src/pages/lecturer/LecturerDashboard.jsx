@@ -24,7 +24,7 @@ export default function LecturerDashboard() {
         const fetchData = async () => {
             try {
                 const token = localStorage.getItem("token");
-                const res = await axios.get("http://localhost:8080/api/appointment/lecturer/my", {
+                const res = await axios.get("https://student-consultation-nqd.onrender.com/api/appointment/lecturer/my", {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 

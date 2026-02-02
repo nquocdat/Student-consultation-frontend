@@ -16,7 +16,7 @@ export default function AdminSettings() {
         const fetchConfig = async () => {
             try {
                 const token = localStorage.getItem("token");
-                const res = await axios.get("http://localhost:8080/api/admin/settings", {
+                const res = await axios.get("https://student-consultation-nqd.onrender.com/api/admin/settings", {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setConfig(res.data);
@@ -33,7 +33,7 @@ export default function AdminSettings() {
         setLoading(true);
         try {
             const token = localStorage.getItem("token");
-            await axios.put("http://localhost:8080/api/admin/settings", config, {
+            await axios.put("https://student-consultation-nqd.onrender.com/api/admin/settings", config, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert("✅ Đã lưu cấu hình hệ thống!");

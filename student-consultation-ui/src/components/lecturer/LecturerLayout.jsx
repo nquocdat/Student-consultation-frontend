@@ -20,7 +20,7 @@ export default function LecturerLayout() {
                 const token = localStorage.getItem("token");
                 if (!token) return;
 
-                const response = await axios.get("http://localhost:8080/api/lecturers/me", {
+                const response = await axios.get("https://student-consultation-nqd.onrender.com/api/lecturers/me", {
                     headers: { Authorization: `Bearer ${token}` }
                 });
 

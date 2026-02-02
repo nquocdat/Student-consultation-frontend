@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 
 export default function StudentProcedureHistory() {
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(false);
     

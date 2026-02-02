@@ -5,7 +5,7 @@ const StudentProfile = () => {
     // ==========================================
     // 1. CẤU HÌNH & STATE
     // ==========================================
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
     // ⚠️ BẠN KIỂM TRA LẠI ĐƯỜNG DẪN API NÀY CHO KHỚP VỚI CONTROLLER NHÉ
     const API_CHANGE_PASS = `${DOMAIN}/api/auth/change-password`; 
 

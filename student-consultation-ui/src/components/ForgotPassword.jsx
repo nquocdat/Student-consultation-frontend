@@ -20,7 +20,7 @@ const ForgotPassword = () => {
             // Gọi API Backend
             // Lưu ý: Backend dùng @RequestParam nên ta truyền kiểu query param (?email=...)
             const response = await axios.post(
-                `http://localhost:8080/api/auth/forgot-password?email=${email}`
+                `https://student-consultation-nqd.onrender.com/api/auth/forgot-password?email=${email}`
             );
 
             // Nếu thành công

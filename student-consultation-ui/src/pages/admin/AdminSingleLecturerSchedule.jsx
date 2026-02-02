@@ -5,7 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 export default function AdminSingleLecturerSchedule() {
     const { lecturerId } = useParams();
     const navigate = useNavigate();
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
 
     // State lưu dữ liệu đã nhóm theo ngày
     const [groupedSchedules, setGroupedSchedules] = useState({});

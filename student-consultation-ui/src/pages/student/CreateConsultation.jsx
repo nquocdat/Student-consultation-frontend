@@ -44,7 +44,7 @@ const CreateConsultation = () => {
     const [selectedLecturerObj, setSelectedLecturerObj] = useState(null);
 
     // API Domain
-    const DOMAIN = "http://localhost:8080";
+    const DOMAIN = "https://student-consultation-nqd.onrender.com";
 
     // --- Helpers ---
     const calculateEndTime = (start, minutes) => {
