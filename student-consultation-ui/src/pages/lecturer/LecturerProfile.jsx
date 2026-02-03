@@ -56,7 +56,10 @@ const LecturerProfile = () => {
         }
     };
 
-    useEffect(() => { fetchProfile(); }, []);
+   useEffect(() => {
+    fetchProfile(); // hoặc fetchRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
     // --- Xử lý Upload Avatar ---
     const handleFileChange = async (event) => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react'; // Đã thêm useCallback
 import axios from 'axios';
 
 const StaffProfile = () => {
@@ -31,13 +31,15 @@ const StaffProfile = () => {
     // 2. CÁC HÀM XỬ LÝ (LOGIC)
     // ==========================================
 
-    // --- Lấy thông tin Profile ---
-    const fetchProfile = async () => {
+    // --- Lấy thông tin Profile (Sử dụng useCallback để tránh lỗi dependency) ---
+    const fetchProfile = useCallback(async () => {
         try {
+            setLoading(true);
             const token = localStorage.getItem("token");
             if (!token) {
                 setError("Bạn chưa đăng nhập!");
-                setLoading(false); return;
+                setLoading(false); 
+                return;
             }
             const response = await axios.get(API_GET_PROFILE, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -49,16 +51,18 @@ const StaffProfile = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [API_GET_PROFILE]); // useCallback sẽ chỉ tạo lại hàm khi URL API thay đổi
 
-    useEffect(() => { fetchProfile(); }, []);
+    // useEffect gọi hàm fetchProfile một cách an toàn
+    useEffect(() => { 
+        fetchProfile(); 
+    }, [fetchProfile]); // fetchProfile hiện đã là một dependency hợp lệ
 
     // --- Xử lý Upload Avatar ---
     const handleFileChange = async (event) => {
         const file = event.target.files[0];
         if (!file) return;
 
-        // Preview ảnh tạm thời
         setPreviewImage(URL.createObjectURL(file)); 
         const formData = new FormData();
         formData.append("file", file);
@@ -131,8 +135,6 @@ const StaffProfile = () => {
                 </h3>
                 
                 <div className="row">
-                    
-                    {/* --- CỘT TRÁI: AVATAR & USERNAME --- */}
                     <div className="col-md-4 text-center border-end">
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <img 
@@ -153,7 +155,6 @@ const StaffProfile = () => {
                             {profile.position || "Nhân viên"}
                         </span>
                         
-                        {/* Hiển thị Mã NV */}
                         <p className="text-muted mt-2 small">Mã NV: <span className="fw-bold">{profile.staffCode || profile.username}</span></p>
 
                         <button className="btn btn-outline-danger mt-3 w-75 rounded-pill shadow-sm" onClick={() => setShowModal(true)}>
@@ -161,20 +162,17 @@ const StaffProfile = () => {
                         </button>
                     </div>
 
-                    {/* --- CỘT PHẢI: THÔNG TIN CHI TIẾT --- */}
                     <div className="col-md-8 px-4">
                         <div className="alert alert-light border border-info text-info py-2 small d-flex align-items-center">
                             <i className="bi bi-info-circle-fill me-2"></i>
                             Thông tin cá nhân được quản lý bởi nhà trường.
                         </div>
 
-                        {/* 1. THÔNG TIN CÁ NHÂN */}
                         <h5 className="text-secondary text-uppercase small fw-bold mt-3">Thông tin cá nhân</h5> <hr className="mt-1" />
                         <div className="row mb-3">
                             <div className="col-sm-4 fw-bold text-muted">Ngày sinh:</div>
                             <div className="col-sm-8 fw-medium">{profile.dob || "---"}</div>
                         </div>
-                        {/* 🔥 HIỂN THỊ GIỚI TÍNH */}
                         <div className="row mb-3">
                             <div className="col-sm-4 fw-bold text-muted">Giới tính:</div>
                             <div className="col-sm-8 fw-medium">
@@ -186,7 +184,6 @@ const StaffProfile = () => {
                             <div className="col-sm-8 fw-medium">{profile.address || "---"}</div>
                         </div>
 
-                        {/* 2. LIÊN HỆ */}
                         <h5 className="text-secondary text-uppercase small fw-bold mt-4">Liên hệ</h5> <hr className="mt-1" />
                         <div className="row mb-3">
                             <div className="col-sm-4 fw-bold text-muted">Email công vụ:</div>
@@ -201,7 +198,6 @@ const StaffProfile = () => {
                             <div className="col-sm-8 fw-medium text-primary">{profile.workPhone || "---"}</div>
                         </div>
 
-                        {/* 3. CÔNG TÁC */}
                         <h5 className="text-secondary text-uppercase small fw-bold mt-4">Thông tin công tác</h5> <hr className="mt-1" />
                         <div className="row mb-3">
                             <div className="col-sm-4 fw-bold text-muted">Phòng ban:</div>
@@ -215,7 +211,6 @@ const StaffProfile = () => {
                 </div>
             </div>
 
-            {/* MODAL ĐỔI MẬT KHẨU */}
             {showModal && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,

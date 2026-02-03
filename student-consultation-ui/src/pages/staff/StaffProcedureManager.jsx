@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react"; // Thêm useCallback
 import axios from "axios";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
@@ -21,8 +21,8 @@ export default function StaffProcedureManager() {
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [selectedIds, setSelectedIds] = useState([]);
 
-    // --- 1. TẢI DỮ LIỆU ---
-    const fetchRequests = async () => {
+    // --- 1. TẢI DỮ LIỆU (Sử dụng useCallback để xử lý triệt để lỗi dependency) ---
+    const fetchRequests = useCallback(async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem("token");
@@ -33,16 +33,21 @@ export default function StaffProcedureManager() {
             const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
             setRequests(res.data.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)));
             setSelectedIds([]); // Reset chọn khi load lại
-        } catch (err) { console.error(err); } 
-        finally { setLoading(false); }
-    };
+        } catch (err) { 
+            console.error(err); 
+        } finally { 
+            setLoading(false); 
+        }
+    }, [DOMAIN, filterStatus]); // Hàm phụ thuộc vào DOMAIN và filterStatus
     
-    useEffect(() => { fetchRequests(); }, [filterStatus]);
+    useEffect(() => { 
+        fetchRequests(); 
+    }, [fetchRequests]); // fetchRequests hiện đã là một dependency hợp lệ
 
     // 🔍 2. LOGIC LỌC DỮ LIỆU (SEARCH)
     const filteredRequests = requests.filter(req => {
         const term = searchTerm.toLowerCase().trim();
-        if (!term) return true; // Nếu không tìm kiếm thì lấy hết
+        if (!term) return true;
 
         const code = req.studentCode?.toLowerCase() || "";
         const name = req.studentName?.toLowerCase() || "";
@@ -57,7 +62,6 @@ export default function StaffProcedureManager() {
     };
 
     const handleToggleAll = (isChecked) => {
-        // Lưu ý: Chỉ chọn những items đang hiển thị (sau khi lọc)
         setSelectedIds(isChecked ? filteredRequests.map(r => r.id) : []);
     };
 
@@ -212,50 +216,40 @@ export default function StaffProcedureManager() {
              
              {/* --- HEADER TOOLBAR --- */}
              <div className="bg-white shadow-sm border-bottom px-4 py-3 mb-4 d-flex flex-wrap justify-content-between align-items-center sticky-top" 
-                  style={{zIndex: 100, transition: 'all 0.3s'}}>
+                  style={{zIndex: 100}}>
                  
-                 {/* 1. BỘ LỌC (TABS) */}
                  <div className="flex-grow-1">
                     <StaffFilter filterStatus={filterStatus} setFilterStatus={setFilterStatus} />
                  </div>
 
-                 {/* 2. THANH TÌM KIẾM ĐẸP (Modern Search Bar) */}
                  <div className="ms-md-4 mt-2 mt-md-0" style={{ minWidth: "300px" }}>
                     <div className="input-group input-group-sm rounded-pill overflow-hidden border bg-light">
-                        {/* Icon Search */}
                         <span className="input-group-text bg-light border-0 ps-3">
                             <i className="bi bi-search text-muted"></i>
                         </span>
                         
-                        {/* Input Field */}
                         <input 
                             type="text" 
                             className="form-control bg-light border-0 shadow-none ps-2 py-2" 
                             placeholder="Tìm tên hoặc mã SV..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{ fontSize: '0.9rem', color: '#495057' }}
+                            style={{ fontSize: '0.9rem' }}
                         />
 
-                        {/* Nút Xóa (Chỉ hiện khi có text) */}
                         {searchTerm && (
                             <button 
                                 className="btn btn-light border-0 pe-3 text-secondary" 
                                 onClick={() => setSearchTerm("")}
-                                title="Xóa tìm kiếm"
-                                style={{transition: 'color 0.2s'}}
                             >
-                                <i className="bi bi-x-circle-fill" style={{fontSize: '0.9rem'}}></i>
+                                <i className="bi bi-x-circle-fill"></i>
                             </button>
                         )}
                     </div>
                  </div>
              </div>
 
-             {/* --- NỘI DUNG CHÍNH --- */}
              <div className="px-4">
-                
-                {/* Thông báo chọn hàng loạt (Giữ nguyên) */}
                 {selectedIds.length > 0 && (
                     <div className="alert alert-warning border-0 shadow-sm d-flex justify-content-between align-items-center mb-3 animate__animated animate__fadeInDown rounded-3">
                         <div>
@@ -266,7 +260,6 @@ export default function StaffProcedureManager() {
                     </div>
                 )}
                 
-                {/* Bảng dữ liệu */}
                 <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
                     <StaffRequestTable 
                         requests={filteredRequests} 
@@ -281,7 +274,6 @@ export default function StaffProcedureManager() {
                 </div>
              </div>
 
-             {/* Modal cập nhật */}
              <StaffUpdateModal 
                 request={selectedRequest}
                 onClose={() => setSelectedRequest(null)}

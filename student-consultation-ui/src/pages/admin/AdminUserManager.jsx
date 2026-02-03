@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 
 export default function AdminUserManager() {
     const DOMAIN = "https://student-consultation-nqd.onrender.com";
     const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(false);
+    
 
     // 🔍 1. STATE CHO TÌM KIẾM
     const [searchTerm, setSearchTerm] = useState("");
@@ -26,16 +26,18 @@ export default function AdminUserManager() {
     const [formData, setFormData] = useState(initialFormState);
 
     // Tải danh sách
-    const fetchUsers = async () => {
-        setLoading(true);
-        try {
-            const token = localStorage.getItem("token");
-            const res = await axios.get(`${DOMAIN}/api/admin/users`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setUsers(res.data);
-        } catch (err) { console.error(err); } finally { setLoading(false); }
-    };
+    const fetchUsers = useCallback(async () => {
+    try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(`${DOMAIN}/api/admin/users`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        setUsers(res.data);
+    } catch (err) { 
+        console.error(err); 
+    } 
+    // Đã xóa setLoading(true) và setLoading(false)
+}, [DOMAIN]);
 
     useEffect(() => { fetchUsers(); }, []);
 

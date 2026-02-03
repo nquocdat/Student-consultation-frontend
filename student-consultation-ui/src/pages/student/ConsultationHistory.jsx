@@ -28,7 +28,6 @@ const ConsultationHistory = () => {
         })
             .then(res => res.json())
             .then(data => {
-                // ✅ SẮP XẾP: Ngày gần nhất đến ngày xa nhất (Tăng dần a - b)
                 const sorted = data.sort((a, b) =>
                     new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`)
                 );
@@ -38,6 +37,7 @@ const ConsultationHistory = () => {
             .catch(console.error);
     };
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { loadData(); }, [token]);
 
     // 2. XỬ LÝ CLICK RA NGOÀI
@@ -55,17 +55,14 @@ const ConsultationHistory = () => {
     useEffect(() => {
         let result = [...appointments];
 
-        // A. Lọc tên
         if (searchName.trim() !== "") {
             result = result.filter(a => a.lecturerName.toLowerCase().includes(searchName.toLowerCase()));
         }
 
-        // B. Lọc Trạng thái
         if (selectedStatuses.length > 0) {
             result = result.filter(a => selectedStatuses.includes(a.statusCode));
         }
 
-        // C. Lọc Thời gian
         if (dateFilter.type !== "ALL" && dateFilter.startDate && dateFilter.endDate) {
             result = result.filter(a => {
                 const appDate = new Date(a.date);
@@ -134,16 +131,12 @@ const ConsultationHistory = () => {
         setActiveDropdown(null);
     };
 
-    // ✅ ĐÃ SỬA: Hiển thị đúng dữ liệu thật từ DB (Start - End)
-    // Nếu Backend chưa trả về endTime, bạn cần kiểm tra lại AppointmentDTO ở Java nhé
     const getDurationDisplay = (startTime, endTime) => {
-        // Cắt chuỗi để bỏ giây (nếu có): 08:00:00 -> 08:00
         const formatTime = (t) => t ? t.substring(0, 5) : "";
-        
         if (startTime && endTime) {
             return `${formatTime(startTime)} - ${formatTime(endTime)}`;
         }
-        return formatTime(startTime); // Chỉ hiện giờ bắt đầu nếu thiếu giờ kết thúc
+        return formatTime(startTime);
     };
 
     const formatDate = (dateString) => {
@@ -151,6 +144,7 @@ const ConsultationHistory = () => {
         const [year, month, day] = dateString.split("-");
         return `${day}/${month}/${year}`;
     };
+
     const handleDownload = (attachmentId, fileName) => {
         fetch(`https://student-consultation-nqd.onrender.com/api/appointment/${attachmentId}/download`, {
             method: 'GET', headers: { 'Authorization': `Bearer ${token}` },
@@ -160,6 +154,7 @@ const ConsultationHistory = () => {
             document.body.appendChild(a); a.click(); a.remove();
         }).catch(() => alert("Lỗi tải file"));
     };
+
     const openDetailModal = (title, content) => setViewModal({ show: true, title, content: content || "Không có nội dung" });
 
     const handleCancel = (appt) => {
@@ -181,6 +176,7 @@ const ConsultationHistory = () => {
         const colors = { APPROVED: "bg-success", PENDING: "bg-warning text-dark", REJECTED: "bg-danger", COMPLETED: "bg-primary", CANCEL_REQUEST: "bg-info text-dark", CANCELED: "bg-secondary" };
         return <span className={`badge rounded-pill ${colors[code] || "bg-secondary"} px-3 py-2 border border-light shadow-sm`} style={{ minWidth: "100px" }}>{text}</span>;
     };
+
     const getResultDisplay = (resultCode) => {
         if (!resultCode) return <span className="text-muted small opacity-50">-</span>;
         const map = { SOLVED: "✅ Đã giải quyết", UNSOLVED: "⚠️ Cần theo dõi", STUDENT_ABSENT: "❌ Vắng mặt", CANCELLED_BY_GV: "⛔ Hủy bởi GV" };
@@ -203,19 +199,14 @@ const ConsultationHistory = () => {
                     <h3 className="fw-bold text-primary mb-1">📋 Lịch Sử Tư Vấn</h3>
                     <p className="text-muted mb-0">Theo dõi trạng thái và kết quả các yêu cầu hỗ trợ của bạn</p>
                 </div>
-                
             </div>
 
-            {/* --- THANH CÔNG CỤ (FIX CỨNG CHIỀU CAO 45PX CHO TẤT CẢ) --- */}
             <div className="card border-0 shadow-sm rounded-4 mb-4 bg-white" style={{ zIndex: 10 }} ref={dropdownRef}>
                 <div className="card-body p-3">
                     <div className="row g-3">
-                        
-                        {/* 1. Tìm tên GV */}
                         <div className="col-md-4">
                             <div className="input-group" style={{ height: "45px" }}>
-                                <span className="input-group-text bg-white border-end-0 d-flex align-items-center justify-content-center"
-                                    style={{ width: "45px" }}>
+                                <span className="input-group-text bg-white border-end-0 d-flex align-items-center justify-content-center" style={{ width: "45px" }}>
                                     <i className="bi bi-search text-muted fs-5"></i>
                                 </span>
                                 <input
@@ -229,7 +220,6 @@ const ConsultationHistory = () => {
                             </div>
                         </div>
 
-                        {/* 2. Lọc Trạng thái */}
                         <div className="col-md-3 position-relative">
                             <div className="dropdown h-100">
                                 <button className="btn btn-white border w-100 text-start d-flex justify-content-between align-items-center shadow-none"
@@ -258,7 +248,6 @@ const ConsultationHistory = () => {
                             </div>
                         </div>
 
-                        {/* 3. Lọc Thời gian */}
                         <div className="col-md-3">
                             <div className="dropdown h-100">
                                 <button className="btn btn-white border w-100 text-start d-flex justify-content-between align-items-center shadow-none"
@@ -294,7 +283,6 @@ const ConsultationHistory = () => {
                             </div>
                         </div>
 
-                        {/* 4. Nút Reset */}
                         <div className="col-md-2 d-grid">
                             <button className="btn btn-outline-secondary border-0 d-flex justify-content-center align-items-center shadow-none"
                                 onClick={() => { setSearchName(""); setSelectedStatuses([]); handleQuickDateSelect('ALL'); }}
@@ -307,7 +295,6 @@ const ConsultationHistory = () => {
                 </div>
             </div>
 
-            {/* --- BẢNG DỮ LIỆU --- */}
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
                 <div className="table-responsive">
                     <table className="table table-hover table-bordered align-middle mb-0" style={{ minWidth: "1400px" }}>
@@ -335,12 +322,18 @@ const ConsultationHistory = () => {
                                         <td className="text-center fw-bold text-muted">{i + 1}</td>
                                         <td className="text-start"><Link to={`/student/lecturer-info/${a.lecturerId}`} className="text-dark text-decoration-none">{a.lecturerName}</Link></td>
                                         <td className="text-center">{formatDate(a.date)}</td>
-                                        
-                                        {/* ✅ ĐÃ SỬA: Hiển thị Khung giờ (Start - End) */}
                                         <td className="text-center"><span className="badge bg-light text-dark border">{getDurationDisplay(a.time, a.endTime)}</span></td>
-                                        
                                         <td className="text-center">{a.consultationType === "IN_PERSON" ? "🏢 Trực tiếp" : "💻 Online"}</td>
-                                        <td className="text-center">{a.attachments?.length > 0 ? "📎 Có file" : "-"}</td>
+                                        <td className="text-center">
+                                            {a.attachments?.length > 0 ? (
+                                                <button 
+                                                    className="btn btn-link p-0 shadow-none text-decoration-none" 
+                                                    onClick={() => handleDownload(a.attachments[0].id, a.attachments[0].fileName)}
+                                                >
+                                                    📎 Tải file
+                                                </button>
+                                            ) : "-"}
+                                        </td>
                                         <td className="text-start cursor-pointer" onClick={() => openDetailModal("Nội dung", a.reason)}><div className="text-truncate" style={{ maxWidth: "200px" }}>{a.reason}</div></td>
                                         <td className="text-start cursor-pointer" onClick={() => openDetailModal("Ghi chú", a.feedbackNote)}><div className="text-truncate" style={{ maxWidth: "200px" }}>{a.feedbackNote || "-"}</div></td>
                                         <td className="text-center">{getStatusBadge(a.statusCode, a.statusDescription)}</td>
@@ -357,7 +350,6 @@ const ConsultationHistory = () => {
                 </div>
             </div>
 
-            {/* Modal */}
             {viewModal.show && (
                 <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} tabIndex="-1">
                     <div className="modal-dialog modal-dialog-centered">

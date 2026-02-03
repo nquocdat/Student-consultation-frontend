@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import LecturerSelectModal from "../../components/student/LecturerSelectModal.jsx";
-import axios from "axios"; // Khuyên dùng axios thay vì fetch để xử lý lỗi tốt hơn
+
 
 // Helper tạo giờ tiêu chuẩn (7h - 17h)
 const generateStandardTimes = () => {

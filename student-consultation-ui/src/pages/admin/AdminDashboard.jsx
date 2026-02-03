@@ -25,11 +25,9 @@ export default function AdminDashboard() {
 
             try {
                 // GỌI SONG SONG 3 API ĐỂ LẤY DỮ LIỆU TỔNG
-                // Lưu ý: Cách này tốt cho demo. Nếu dữ liệu quá lớn (hàng triệu dòng), 
-                // bạn nên viết API backend riêng trả về số lượng (COUNT) thay vì list.
                 const [usersRes, requestsRes, apptRes] = await Promise.allSettled([
                     axios.get(`${DOMAIN}/api/admin/users`, { headers }),
-                    axios.get(`${DOMAIN}/api/procedures/staff/requests`, { headers }), // API lấy tất cả request (Staff/Admin)
+                    axios.get(`${DOMAIN}/api/procedures/staff/requests`, { headers }), 
                     axios.get(`${DOMAIN}/api/admin/appointments`, { headers })
                 ]);
 
@@ -51,13 +49,12 @@ export default function AdminDashboard() {
                 });
 
                 // 4. TẠO DANH SÁCH "HOẠT ĐỘNG GẦN ĐÂY"
-                // Chuẩn hóa dữ liệu để gộp chung
                 const normalizedRequests = requests.map(r => ({
                     id: r.id,
                     type: 'PROCEDURE',
                     title: `Yêu cầu: ${r.procedureName}`,
                     user: r.studentName,
-                    date: r.createdAt, // Cần đảm bảo backend trả về field này
+                    date: r.createdAt, 
                     status: r.status
                 }));
 
@@ -66,7 +63,7 @@ export default function AdminDashboard() {
                     type: 'APPOINTMENT',
                     title: `Lịch hẹn với ${a.lecturerName}`,
                     user: a.studentName,
-                    date: a.date + ' ' + a.time, // Ghép ngày giờ
+                    date: a.date + ' ' + a.time, 
                     status: a.status
                 }));
 
@@ -87,9 +84,29 @@ export default function AdminDashboard() {
         fetchDashboardData();
     }, []);
 
-    // Helper: Badge trạng thái cho danh sách gần đây
-    const getStatusBadge = (status) => {
-        const map = {
+    // Helper: Badge trạng thái tích hợp cả Thủ tục và Lịch hẹn
+    const getStatusBadge = (item) => {
+        const status = item.status;
+        
+        // --- XỬ LÝ TRẠNG THÁI LỊCH HẸN (Dựa trên bảng statuses của bạn) ---
+        if (item.type === 'APPOINTMENT') {
+            const appointmentMap = {
+                PENDING: "bg-warning text-dark",    // Chờ giảng viên duyệt
+                APPROVED: "bg-success",             // Đã duyệt
+                REJECTED: "bg-danger",              // Từ chối
+                CANCELED: "bg-secondary",            // Đã hủy
+                CANCEL_REQUEST: "bg-info text-dark",// SV yêu cầu hủy
+                COMPLETED: "bg-primary"             // Hoàn thành
+            };
+            return (
+                <span className={`badge ${appointmentMap[status] || "bg-secondary"} rounded-pill`}>
+                    {status === 'CANCEL_REQUEST' ? 'Yêu cầu hủy' : status}
+                </span>
+            );
+        }
+
+        // --- XỬ LÝ TRẠNG THÁI THỦ TỤC ---
+        const procedureMap = {
             PENDING: "bg-warning text-dark",
             APPROVED: "bg-info text-dark",
             PROCESSING: "bg-primary",
@@ -98,8 +115,9 @@ export default function AdminDashboard() {
             REJECTED: "bg-danger",
             CANCELED: "bg-secondary"
         };
-        return <span className={`badge ${map[status] || "bg-secondary"} rounded-pill`}>{status}</span>;
+        return <span className={`badge ${procedureMap[status] || "bg-secondary"} rounded-pill`}>{status}</span>;
     };
+    
 
     if (loading) return (
         <div className="d-flex justify-content-center align-items-center vh-100">
@@ -125,7 +143,6 @@ export default function AdminDashboard() {
 
             {/* --- KHỐI THỐNG KÊ (CARDS) --- */}
             <div className="row g-3 mb-4">
-                {/* Card 1: Người dùng */}
                 <div className="col-md-3">
                     <div className="card border-0 shadow-sm h-100 border-start border-4 border-primary">
                         <div className="card-body">
@@ -141,7 +158,6 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
-                {/* Card 2: Lịch hẹn */}
                 <div className="col-md-3">
                     <div className="card border-0 shadow-sm h-100 border-start border-4 border-info">
                         <div className="card-body">
@@ -157,7 +173,6 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
-                {/* Card 3: Tổng thủ tục */}
                 <div className="col-md-3">
                     <div className="card border-0 shadow-sm h-100 border-start border-4 border-success">
                         <div className="card-body">
@@ -173,7 +188,6 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
-                {/* Card 4: Cần xử lý gấp */}
                 <div className="col-md-3">
                     <div className="card border-0 shadow-sm h-100 border-start border-4 border-warning">
                         <div className="card-body">
@@ -184,7 +198,6 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
                             <h2 className="fw-bold mb-0 text-warning">{stats.pendingRequests}</h2>
-                            
                         </div>
                     </div>
                 </div>
@@ -224,7 +237,8 @@ export default function AdminDashboard() {
                                                 <td className="fw-bold">{item.title}</td>
                                                 <td>{item.user}</td>
                                                 <td className="small text-muted">{new Date(item.date).toLocaleDateString('vi-VN')}</td>
-                                                <td>{getStatusBadge(item.status)}</td>
+                                                {/* Đã cập nhật để truyền item thay vì chỉ status */}
+                                                <td>{getStatusBadge(item)}</td>
                                             </tr>
                                         ))
                                     )}
@@ -237,7 +251,6 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
-                {/* --- KHỐI LỐI TẮT (QUICK ACTIONS) --- */}
                 <div className="col-md-4">
                     <div className="card border-0 shadow-sm rounded-4">
                         <div className="card-header bg-white py-3 border-bottom-0">
@@ -278,7 +291,6 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            {/* CSS inline cho hiệu ứng hover */}
             <style>
                 {`
                 .hover-shadow:hover {
